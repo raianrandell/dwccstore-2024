@@ -1,0 +1,116 @@
+@extends('layout.cashier')
+
+@section('title', 'Void Logs Report')
+
+@section('content')
+<ol class="breadcrumb mb-3 mt-5">
+    <li class="breadcrumb-item"><a href="{{ route('cashier.cashier_dashboard') }}">Home</a></li>
+    <li class="breadcrumb-item active"><a href="{{ route('cashier.void_report') }}">Void Logs Report</a></li>
+</ol>
+
+<!-- Page Title and Export Options -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{{ route('cashier.void_item_report.pdf', [
+            'start_date' => request('start_date'),
+            'end_date' => request('end_date'),
+            'item_name' => request('item_name'),
+            'category' => request('category')
+        ]) }}" class="btn btn-danger me-2">
+            <i class="fas fa-file-pdf"></i> Export PDF
+        </a>
+        <a href="{{ route('cashier.void_item_report.excel', [
+            'start_date' => request('start_date'),
+            'end_date' => request('end_date'),
+            'item_name' => request('item_name'),
+            'category' => request('category')
+        ]) }}" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Export Excel
+        </a>
+
+    </div>
+</div>
+
+<!-- Filter Section -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ route('cashier.void_report') }}">
+            <div class="row">
+                <div class="col-md-2">
+                    <label for="startDate" class="form-label">Start Date</label>
+                    <input type="date" id="startDate" name="start_date" class="form-control" value="{{ request('start_date') }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="endDate" class="form-label">End Date</label>
+                    <input type="date" id="endDate" name="end_date" class="form-control" value="{{ request('end_date') }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="itemName" class="form-label">Filter by Item Name</label>
+                    <select id="itemName" name="item_name" class="form-select">
+                        <option value="">All Items</option>
+                        @foreach($items as $item)
+                            <option value="{{ $item->item_name }}" {{ request('item_name') == $item->item_name ? 'selected' : '' }}>
+                                {{ $item->item_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="category" class="form-label">Filter by Category</label>
+                    <select id="category" name="category" class="form-select">
+                        <option value="">All Categories</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->category_name }}" {{ request('category') == $category->category_name ? 'selected' : '' }}>
+                                    {{ $category->category_name }}
+                                </option>
+                            @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <!-- Filter Button -->
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <!-- Reset Button -->
+                    <a href="{{ route('cashier.void_report') }}" class="btn btn-secondary w-100">
+                        <i class="fas fa-undo"></i> Reset Filters
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4" style="box-shadow: 12px 12px 7px rgba(0, 0, 0, 0.3);">
+    <div class="card-header">
+        <i class="fas fa-table me-1"></i>
+        Void Reports
+    </div>
+    <div class="card-body">
+        <table id="datatablesSimple" class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Date/Time</th>
+                    <th>Item Name</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Cashier Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($voidRecords as $void)
+                    <tr>
+                        <td>{{ $void->voided_at ? $void->voided_at->format('m-d-Y h:i:s a') : 'N/A' }}</td>
+                        <td>{{ $void->item_name ?? 'N/A' }}</td>
+                        <td>{{ $void->items->category->category_name ?? 'N/A' }}</td>
+                        <td>{{ number_format($void->price, 2) }}</td>
+                        <td>{{ $void->voided_by }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endsection

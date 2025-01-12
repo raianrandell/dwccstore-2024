@@ -80,11 +80,11 @@
             <div class="collapse {{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') ? 'show' : '' }}" id="collapseReports" aria-labelledby="headingReports" data-bs-parent="#sidenavAccordion">
                 <nav class="sb-sidenav-menu-nested">
                     <a class="nav-link text-white {{ request()->routeIs('cashier.sales_report') ? 'active' : '' }}" href="{{ route('cashier.sales_report') }}">
-                        <div class="sb-nav-link-icon text-white"><i class="fas fa-money-bill-wave"></i></div>
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-dollar-sign"></i></div>
                         Sales 
                     </a>
                     <a class="nav-link text-white {{ request()->routeIs('cashier.void_report') ? 'active' : '' }}" href="{{ route('cashier.void_report') }}">
-                        <div class="sb-nav-link-icon text-white"><i class="fas fa-history"></i></div>
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-ban"></i></div>
                         Void Logs
                     </a>
                     <a class="nav-link text-white {{ request()->routeIs('cashier.return_item_report') ? 'active' : '' }}" href="{{ route('cashier.return_item_report') }}">

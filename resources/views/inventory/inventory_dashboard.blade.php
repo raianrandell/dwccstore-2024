@@ -14,17 +14,11 @@
                         <div class="display-4"><b>&nbsp;{{ $totalItems }}</b></div> <!-- Use dynamic count -->
                     </div>
                     <div class="col-3 mt-4">
-                        <i class="fas fa-boxes fa-3x"></i> 
+                        <i class="fas fa-cubes fa-3x"></i> 
                     </div>
                 </div>
             </div>
             <div class="card-footer d-flex align-items-center justify-content-between">
-                <a class="small text-white stretched-link" href="#">
-                    View Details
-                </a>
-                <div class="small text-white">
-                    <i class="fas fa-angle-right"></i>
-                </div>
             </div>
         </div>
     </div>
@@ -43,12 +37,6 @@
                 </div>
             </div>
             <div class="card-footer d-flex align-items-center justify-content-between">
-                <a class="small text-white stretched-link" href="#">
-                    View Details
-                </a>
-                <div class="small text-white">
-                    <i class="fas fa-angle-right"></i>
-                </div>
             </div>
         </div>
     </div>
@@ -67,12 +55,6 @@
                 </div>
             </div>
             <div class="card-footer d-flex align-items-center justify-content-between">
-                <a class="small text-white stretched-link" href="#">
-                    View Details
-                </a>
-                <div class="small text-white">
-                    <i class="fas fa-angle-right"></i>
-                </div>
             </div>
         </div>
     </div>

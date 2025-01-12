@@ -4,14 +4,14 @@
 
 @section('content')
 <ol class="breadcrumb mb-3 mt-5">
-    <li class="breadcrumb-item"><a href="{{ route('accounting.dashboard') }}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('accounting.chargeTransaction') }}">Home</a></li>
     <li class="breadcrumb-item active">Void Logs Report</li>
 </ol>
 
 <!-- Page Title and Export Options -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <a href="{{ route('cashier.void_item_report.pdf', [
+        <a href="{{ route('accounting.void_item_report.pdf', [
             'start_date' => request('start_date'),
             'end_date' => request('end_date'),
             'item_name' => request('item_name'),
@@ -19,7 +19,7 @@
         ]) }}" class="btn btn-danger me-2">
             <i class="fas fa-file-pdf"></i> Export PDF
         </a>
-        <a href="{{ route('cashier.void_item_report.excel', [
+        <a href="{{ route('accounting.void_item_report.excel', [
             'start_date' => request('start_date'),
             'end_date' => request('end_date'),
             'item_name' => request('item_name'),

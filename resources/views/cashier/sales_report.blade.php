@@ -89,7 +89,7 @@
                 <!-- Apply Filters Button -->
                 <div class="col-md-1 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter"></i> Apply
+                        <i class="fas fa-filter"></i> Filter
                     </button>
                 </div>
                 

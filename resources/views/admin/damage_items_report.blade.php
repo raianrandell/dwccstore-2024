@@ -1,17 +1,17 @@
-@extends('layout.accounting')
+@extends('layout.admin')
 
 @section('title', 'Damage Items Report')
 
 @section('content')
 <ol class="breadcrumb mb-3 mt-5">
-    <li class="breadcrumb-item"><a href="{{ route('accounting.chargeTransaction') }}">Home</a></li>
-    <li class="breadcrumb-item active">Damage Items Report</li>
+    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
+    <li class="breadcrumb-item active">Damage Items</li>
 </ol>
 
 <!-- Page Title and Export Options -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <a href="{{ route('accounting.damage_item_report.pdf', [
+        <a href="{{ route('admin.damage_item_report.pdf', [
             'start_date' => request('start_date'),
             'end_date' => request('end_date'),
             'item_name' => request('item_name'),
@@ -19,7 +19,7 @@
         ]) }}" class="btn btn-danger me-2">
             <i class="fas fa-file-pdf"></i> Export PDF
         </a>
-        <a href="{{ route('accounting.damage_item_report.excel', [
+        <a href="{{ route('admin.damage_item_report.excel', [
             'start_date' => request('start_date'),
             'end_date' => request('end_date'),
             'item_name' => request('item_name'),
@@ -34,7 +34,7 @@
 <!-- Filter Section -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ route('accounting.damage_items') }}">
+        <form method="GET" action="{{ route('admin.damage_item_report') }}">
             <div class="row">
                 <div class="col-md-2">
                     <label for="startDate" class="form-label">Start Date</label>
@@ -74,7 +74,7 @@
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <!-- Reset Button -->
-                    <a href="{{ route('accounting.damage_items') }}" class="btn btn-secondary w-100">
+                    <a href="{{ route('admin.damage_item_report') }}" class="btn btn-secondary w-100">
                         <i class="fas fa-undo"></i> Reset Filters
                     </a>
                 </div>

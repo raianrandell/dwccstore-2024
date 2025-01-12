@@ -4,7 +4,7 @@
 
 @section('content')
 <ol class="breadcrumb mb-3 mt-5">
-    <li class="breadcrumb-item"><a href="{{ route('inventory.dashboard') }}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('accounting.chargeTransaction') }}">Home</a></li>
     <li class="breadcrumb-item active">User Profile</li>
 </ol>
 <div class="scale-wrapper" style="transform: scale(0.9); transform-origin: top left; width: 111.11%;">

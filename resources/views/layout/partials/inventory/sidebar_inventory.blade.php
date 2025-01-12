@@ -7,7 +7,7 @@
                 Dashboard
             </a>
             <a class="nav-link text-white {{ request()->routeIs('inventory.sectionmanagement') ? 'active' : '' }}" href="{{ route('inventory.sectionmanagement') }}">
-                <div class="sb-nav-link-icon text-white"><i class="fas fa-layer-group"></i></div>
+                <div class="sb-nav-link-icon text-white"><i class="fas fa-sitemap"></i></div>
                 Section Management
             </a>
             <a class="nav-link text-white {{ request()->routeIs('inventory.categorymanagement') ? 'active' : '' }}" href="{{ route('inventory.categorymanagement') }}">
@@ -27,12 +27,12 @@
                 Toga Renting
             </a>
             <a class="nav-link text-white {{ request()->routeIs('inventory.services') ? 'active' : '' }}" href="{{ route('inventory.services') }}">
-                <div class="sb-nav-link-icon text-white"><i class="fa-solid fa-hand-holding-medical"></i></div>
+                <div class="sb-nav-link-icon text-white"><i class="fas fa-concierge-bell"></i></div>
                 Services
             </a>
             
             <!-- Reports Dropdown -->
-            <a class="nav-link collapsed text-white {{ request()->routeIs('inventory.damage_item_report') || request()->routeIs('inventory.total_item_report')  || request()->routeIs('inventory.low_stock_item_report') || request()->routeIs('inventory.expired_item_report') ? 'active' : '' }}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseReports" aria-expanded="{{ request()->routeIs('inventory.damage_item_report') || request()->routeIs('inventory.totalitems') || request()->routeIs('inventory.expired_item_report') ? 'true' : 'false' }}" aria-controls="collapseReports">
+            <a class="nav-link collapsed text-white {{ request()->routeIs('inventory.damage_item_report') || request()->routeIs('inventory.total_item_report')  || request()->routeIs('inventory.low_stock_item_report') || request()->routeIs('inventory.expired_item_report') ? 'active' : '' }}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseReports" aria-expanded="{{ request()->routeIs('inventory.damage_item_report') || request()->routeIs('inventory.total_item_report') || request()->routeIs('inventory.expired_item_report') ? 'true' : 'false' }}" aria-controls="collapseReports">
                 <div class="sb-nav-link-icon text-white"><i class="fas fa-chart-line"></i></div>
                 Reports
                 <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down text-white"></i></div>
@@ -48,11 +48,11 @@
                         Damage Items
                     </a>
                     <a class="nav-link text-white {{ request()->routeIs('inventory.low_stock_item_report') ? 'active' : '' }}" href="{{ route('inventory.low_stock_item_report') }}">
-                        <div class="sb-nav-link-icon text-white"><i class="fas fa-clipboard-list"></i></div>
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-thermometer-quarter"></i></div>
                         Low Stock Items
                     </a>
                     <a class="nav-link text-white {{ request()->routeIs('inventory.expired_item_report') ? 'active' : '' }}" href="{{ route('inventory.expired_item_report') }}">
-                        <div class="sb-nav-link-icon text-white"><i class="fas fa-clipboard-list"></i></div>
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-hourglass-end"></i></div>
                         Expired Items
                     </a>
                 </nav>
@@ -73,5 +73,4 @@
             Guest
         @endauth
     </div>
-    
 </nav>

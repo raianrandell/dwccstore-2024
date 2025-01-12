@@ -163,6 +163,26 @@ Route::prefix('admin')->group(function () {
         Route::post('/admin/returnBorrower/{id}', [AdminController::class, 'returnBorrower'])->name('admin.returnBorrower');
         Route::POST('/adminlogout', [AdminController::class, 'adminlogout'])->name('admin.logout');
         Route::post('/user/profile/update-password', [AdminController::class, 'changePassword'])->name('admin.changePassword');
+
+        Route::get('/total-item-report', [AdminController::class, 'totalItemReport'])->name('admin.total_item_report');
+        Route::get('/total-item-report/pdf', [AdminController::class, 'exportTotalItemReportPdf'])->name('admin.total_item_report.pdf');
+        Route::get('/total-item-report/excel', [AdminController::class, 'exportTotalItemReport'])->name('admin.total_item_report.excel');
+
+        Route::GET('/accounting_sales', [AdminController::class, 'salesReport'])->name('admin.sales_report');
+        Route::get('/accounting/sales-report/pdf', [AdminController::class, 'exportSalesReportPdf'])->name('admin.sales_report.pdf');
+        Route::get('/accounting/sales-report/excel', [AdminController::class, 'exportSalesReportExcel'])->name('admin.sales_report.excel');
+
+        Route::get('/damage-item-report', [AdminController::class, 'damageItemReport'])->name('admin.damage_item_report');
+        Route::get('/damage-item-report/pdf', [AdminController::class, 'exportDamageItemReportPdf'])->name('admin.damage_item_report.pdf');
+        Route::get('/damage-item-report/excel', [AdminController::class, 'exportDamageItemReportExcel'])->name('admin.damage_item_report.excel');
+
+        Route::GET('/admin_voidreport', [AdminController::class, 'void_report'])->name('admin.void_report');
+        Route::get('/admin/void-item-report/pdf', [AdminController::class, 'exportVoidItemReportPdf'])->name('admin.void_item_report.pdf');
+        Route::get('/admin/void-item-report/excel', [AdminController::class, 'exportVoidItemReportExcel'])->name('admin.void_item_report.excel');
+
+        Route::GET('/admin_returnreport', [AdminController::class, 'returnReport'])->name('admin.return_item_report');
+        Route::get('/admin/returned-item-report/pdf', [AdminController::class, 'exportReturnedItemReportPdf'])->name('admin.returned_item_report_pdf');
+        Route::get('/admin/returned-item-report/excel', [AdminController::class, 'exportReturnedItemReportExcel'])->name('admin.returned_item_report_excel');
     });
 });
 
@@ -172,9 +192,9 @@ Route::prefix('accounting')->group(function () {
     Route::middleware(['accountingAuth'])->group(function () {
         // Accounting Routes
         Route::GET('/accountingdashboard', [AccountingController::class, 'accountingDashboard'])->name('accounting.dashboard');
-        Route::GET('/accounting_sales', [AccountingController::class, 'salesReport'])->name('accounting.sales_report');
+
         Route::GET('/accounting_returns', [AccountingController::class, 'returnReport'])->name('accounting.returned_items');
-        Route::GET('/accounting_voids', [AccountingController::class, 'void_report'])->name('accounting.void_report');
+       
 
         Route::POST('/accountinglogout', [AccountingController::class, 'accountinglogout'])->name('accounting.logout');
         Route::GET('/accounting_userprofile', [AccountingController::class, 'userProfile'])->name('accounting.userprofile');
@@ -183,10 +203,32 @@ Route::prefix('accounting')->group(function () {
         Route::get('/get-transaction-details/{id}', [AccountingController::class, 'getTransactionDetails']);
         Route::post('/update-transaction-status/{id}', [AccountingController::class, 'updateTransactionStatus']);
 
-        Route::GET('/accounting_damageitems', [AccountingController::class, 'damageitems'])->name('accounting.damage_items');
+
         Route::post('/user/profile/update-password', [AccountingController::class, 'changePassword'])->name('accounting.changePassword');
+
+        Route::GET('/accounting_sales', [AccountingController::class, 'salesReport'])->name('accounting.sales_report');
         Route::get('/accounting/sales-report/pdf', [AccountingController::class, 'exportSalesReportPdf'])->name('accounting.sales_report.pdf');
         Route::get('/accounting/sales-report/excel', [AccountingController::class, 'exportSalesReportExcel'])->name('accounting.sales_report.excel');
+
+        Route::GET('/accounting_returns', [AccountingController::class, 'returnReport'])->name('accounting.return_item_report');
+        Route::get('/accounting/returned-item-report/pdf', [AccountingController::class, 'exportReturnedItemReportPdf'])->name('accounting.returned_item_report_pdf');
+        Route::get('/accounting/returned-item-report/excel', [AccountingController::class, 'exportReturnedItemReportExcel'])->name('accounting.returned_item_report_excel');
+        
+        Route::GET('/accounting_voids', [AccountingController::class, 'void_report'])->name('accounting.void_report');
+        Route::get('/accounting/void-item-report/pdf', [AccountingController::class, 'exportVoidItemReportPdf'])->name('accounting.void_item_report.pdf');
+        Route::get('/accounting/void-item-report/excel', [AccountingController::class, 'exportVoidItemReportExcel'])->name('accounting.void_item_report.excel');
+
+        Route::GET('/accounting_damageitems', [AccountingController::class, 'damageitems'])->name('accounting.damage_items');
+        Route::get('/damage-item-report/pdf', [AccountingController::class, 'exportDamageItemReportPdf'])->name('accounting.damage_item_report.pdf');
+        Route::get('/damage-item-report/excel', [AccountingController::class, 'exportDamageItemReportExcel'])->name('accounting.damage_item_report.excel');
+
+        Route::get('/total-item-report', [AccountingController::class, 'totalItemReport'])->name('accounting.total_item_report');
+        Route::get('/total-item-report/pdf', [AccountingController::class, 'exportTotalItemReportPdf'])->name('accounting.total_item_report.pdf');
+        Route::get('/total-item-report/excel', [AccountingController::class, 'exportTotalItemReport'])->name('accounting.total_item_report.excel');
+
+        Route::get('/damage-item-report', [AccountingController::class, 'damageItemReport'])->name('accounting.damage_item_report');
+        Route::get('/damage-item-report/pdf', [AccountingController::class, 'exportDamageItemReportPdf'])->name('accounting.damage_item_report.pdf');
+        Route::get('/damage-item-report/excel', [AccountingController::class, 'exportDamageItemReportExcel'])->name('accounting.damage_item_report.excel');
     });
 });
 

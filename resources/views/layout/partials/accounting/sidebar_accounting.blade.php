@@ -10,24 +10,29 @@
 
             <!-- Reports Dropdown -->
             <a class="nav-link collapsed text-white 
-                {{ request()->routeIs('accounting.sales_report') || request()->routeIs('accounting.damage_items') || request()->routeIs('accounting.returned_items') || request()->routeIs('accounting.void_report') ? 'active' : '' }}" 
+                {{ request()->routeIs('accounting.total_item_report') || request()->routeIs('accounting.sales_report') || request()->routeIs('accounting.damage_items') || request()->routeIs('accounting.return_item_report') || request()->routeIs('accounting.void_report') ? 'active' : '' }}" 
                 href="#" data-bs-toggle="collapse" 
                 data-bs-target="#collapseReports" 
-                aria-expanded="{{ request()->routeIs('accounting.sales_report') || request()->routeIs('accounting.damage_items') || request()->routeIs('accounting.returned_items') || request()->routeIs('accounting.void_report') ? 'true' : 'false' }}" 
+                aria-expanded="{{ request()->routeIs('accounting.total_item_report') || request()->routeIs('accounting.sales_report') || request()->routeIs('accounting.damage_items') || request()->routeIs('accounting.return_item_report') || request()->routeIs('accounting.void_report') ? 'true' : 'false' }}" 
                 aria-controls="collapseReports">
                 <div class="sb-nav-link-icon text-white"><i class="fas fa-chart-line"></i></div>
                 Reports
                 <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down text-white"></i></div>
             </a>
-            <div class="collapse {{ request()->routeIs('accounting.sales_report') || request()->routeIs('accounting.damage_items') || request()->routeIs('accounting.returned_items') || request()->routeIs('accounting.void_report') ? 'show' : '' }}" id="collapseReports" aria-labelledby="headingReports" data-bs-parent="#sidenavAccordion">
+            <div class="collapse {{ request()->routeIs('accounting.total_item_report') || request()->routeIs('accounting.sales_report') || request()->routeIs('accounting.damage_items') || request()->routeIs('accounting.return_item_report') || request()->routeIs('accounting.void_report') ? 'show' : '' }}" id="collapseReports" aria-labelledby="headingReports" data-bs-parent="#sidenavAccordion">
                 <nav class="sb-sidenav-menu-nested">
+                    <!-- Total Items -->
+                    <a class="nav-link text-white {{ request()->routeIs('accounting.total_item_report') ? 'active' : '' }}" href="{{ route('accounting.total_item_report') }}">
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-clipboard-list"></i></div>
+                        All Items
+                    </a>
                     <!-- Sales Report -->
                     <a class="nav-link text-white {{ request()->routeIs('accounting.sales_report') ? 'active' : '' }}" href="{{ route('accounting.sales_report') }}">
-                        <div class="sb-nav-link-icon text-white"><i class="fas fa-money-bill-wave"></i></div>
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-dollar-sign"></i></div>
                         Sales
                     </a>
                     <!-- Returned Items -->
-                    <a class="nav-link text-white {{ request()->routeIs('accounting.returned_items') ? 'active' : '' }}" href="{{ route('accounting.returned_items') }}">
+                    <a class="nav-link text-white {{ request()->routeIs('accounting.return_item_report') ? 'active' : '' }}" href="{{ route('accounting.return_item_report') }}">
                         <div class="sb-nav-link-icon text-white"><i class="fas fa-undo-alt"></i></div>
                         Returned Items
                     </a>

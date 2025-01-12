@@ -1,19 +1,19 @@
-@extends('layout.inventory')
+@extends('layout.admin')
 
 @section('title', 'Total Items Report')
 
 @section('content')
 <ol class="breadcrumb mb-3 mt-5">
-    <li class="breadcrumb-item"><a href="{{ route('inventory.dashboard') }}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
     <li class="breadcrumb-item active">Total Items</li>
 </ol>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <a href="{{ route('inventory.total_item_report.pdf', request()->query()) }}" class="btn btn-danger me-2">
+        <a href="{{ route('admin.total_item_report.pdf', request()->query()) }}" class="btn btn-danger me-2">
             <i class="fas fa-file-pdf"></i> Export PDF
         </a>
-        <a href="{{ route('inventory.total_item_report.excel', request()->query()) }}" class="btn btn-success">
+        <a href="{{ route('admin.total_item_report.excel', request()->query()) }}" class="btn btn-success">
             <i class="fas fa-file-excel"></i> Export Excel
         </a>
     </div>
@@ -22,7 +22,7 @@
 <!-- Filter Section -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ route('inventory.total_item_report') }}">
+        <form method="GET" action="{{ route('admin.total_item_report') }}">
             <div class="row align-items-end">
                 <!-- Start Date -->
                 <div class="col-md-2">
@@ -75,15 +75,15 @@
 
                 <!-- Filter Button -->
                 <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100" style="font-size: 12px">
-                        <i class="fas fa-filter"></i> Apply Filters
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Filter
                     </button>
                 </div>
 
                 <!-- Reset Button -->
                 <div class="col-md-1 d-flex align-items-end">
-                    <a href="{{ route('inventory.total_item_report') }}" class="btn btn-secondary w-100" style="font-size: 12px">
-                        <i class="fas fa-undo"></i> Reset Filters
+                    <a href="{{ route('admin.total_item_report') }}" class="btn btn-secondary w-100">
+                        <i class="fas fa-undo"></i> Reset 
                     </a>
                 </div>
             </div>

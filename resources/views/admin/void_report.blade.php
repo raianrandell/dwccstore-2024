@@ -1,17 +1,17 @@
-@extends('layout.accounting')
+@extends('layout.admin')
 
-@section('title', 'Damage Items Report')
+@section('title', 'Void Logs Report')
 
 @section('content')
 <ol class="breadcrumb mb-3 mt-5">
-    <li class="breadcrumb-item"><a href="{{ route('accounting.chargeTransaction') }}">Home</a></li>
-    <li class="breadcrumb-item active">Damage Items Report</li>
+    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
+    <li class="breadcrumb-item active">Void Logs Report</li>
 </ol>
 
 <!-- Page Title and Export Options -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <a href="{{ route('accounting.damage_item_report.pdf', [
+        <a href="{{ route('admin.void_item_report.pdf', [
             'start_date' => request('start_date'),
             'end_date' => request('end_date'),
             'item_name' => request('item_name'),
@@ -19,7 +19,7 @@
         ]) }}" class="btn btn-danger me-2">
             <i class="fas fa-file-pdf"></i> Export PDF
         </a>
-        <a href="{{ route('accounting.damage_item_report.excel', [
+        <a href="{{ route('admin.void_item_report.excel', [
             'start_date' => request('start_date'),
             'end_date' => request('end_date'),
             'item_name' => request('item_name'),
@@ -34,7 +34,7 @@
 <!-- Filter Section -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ route('accounting.damage_items') }}">
+        <form method="GET" action="{{ route('admin.void_report') }}">
             <div class="row">
                 <div class="col-md-2">
                     <label for="startDate" class="form-label">Start Date</label>
@@ -48,9 +48,9 @@
                     <label for="itemName" class="form-label">Filter by Item Name</label>
                     <select id="itemName" name="item_name" class="form-select">
                         <option value="">All Items</option>
-                        @foreach ($uniqueItemNames as $itemName)
-                            <option value="{{ $itemName }}" {{ request('item_name') == $itemName ? 'selected' : '' }}>
-                                {{ $itemName }}
+                        @foreach($items as $item)
+                            <option value="{{ $item->item_name }}" {{ request('item_name') == $item->item_name ? 'selected' : '' }}>
+                                {{ $item->item_name }}
                             </option>
                         @endforeach
                     </select>
@@ -59,11 +59,11 @@
                     <label for="category" class="form-label">Filter by Category</label>
                     <select id="category" name="category" class="form-select">
                         <option value="">All Categories</option>
-                        @foreach ($uniqueCategories as $category)
-                            <option value="{{ $category }}" {{ request('category') == $category ? 'selected' : '' }}>
-                                {{ $category }}
-                            </option>
-                        @endforeach
+                            @foreach($categories as $category)
+                                <option value="{{ $category->category_name }}" {{ request('category') == $category->category_name ? 'selected' : '' }}>
+                                    {{ $category->category_name }}
+                                </option>
+                            @endforeach
                     </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
@@ -74,7 +74,7 @@
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <!-- Reset Button -->
-                    <a href="{{ route('accounting.damage_items') }}" class="btn btn-secondary w-100">
+                    <a href="{{ route('admin.void_report') }}" class="btn btn-secondary w-100">
                         <i class="fas fa-undo"></i> Reset Filters
                     </a>
                 </div>
@@ -83,44 +83,34 @@
     </div>
 </div>
 
-<!-- Damage Items Report Table -->
-<div class="card mb-4">
+<div class="card mb-4" style="box-shadow: 12px 12px 7px rgba(0, 0, 0, 0.3);">
     <div class="card-header">
         <i class="fas fa-table me-1"></i>
-        Damage Item Report
+        Void Reports
     </div>
     <div class="card-body">
-        <table id="datatablesSimple" class="table table-bordered">
+        <table id="datatablesSimple" class="table table-bordered table-striped">
             <thead>
                 <tr>
+                    <th>Date/Time</th>
                     <th>Item Name</th>
                     <th>Category</th>
-                    <th>Quantity</th>
-                    <th>Date Encoded</th>
-                    <th>Damage Description</th>
+                    <th>Price</th>
+                    <th>Cashier Name</th>
                 </tr>
             </thead>
             <tbody>
-            @foreach ($damageItems as $damageItem)
-                <tr>
-                    <td>{{ $damageItem->item_name }}</td>
-                    <td>{{ $damageItem->category->category_name ?? 'No Category' }}</td>
-                    <td>{{ $damageItem->quantity }}</td>
-                    <td>{{ $damageItem->created_at->format('m-d-Y') }}</td>
-                    <td>{{ $damageItem->damage_description }}</td>
-                </tr>
-            @endforeach
+                @foreach ($voidRecords as $void)
+                    <tr>
+                        <td>{{ $void->voided_at ? $void->voided_at->format('m-d-Y h:i:s a') : 'N/A' }}</td>
+                        <td>{{ $void->item_name ?? 'N/A' }}</td>
+                        <td>{{ $void->items->category->category_name ?? 'N/A' }}</td>
+                        <td>₱{{ number_format($void->price, 2) }}</td>
+                        <td>{{ $void->voided_by }}</td>
+                    </tr>
+                @endforeach
             </tbody>
         </table>
     </div>
 </div>
-
-<!-- Include jQuery DataTables for Search and Sort Features -->
-<script>
-    $(document).ready(function() {
-        $('#datatablesSimple').DataTable({
-            // Customize the DataTable as needed
-        });
-    });
-</script>
 @endsection

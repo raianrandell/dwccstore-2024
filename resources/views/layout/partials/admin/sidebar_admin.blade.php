@@ -2,23 +2,81 @@
     <div class="sb-sidenav-menu">
         <div class="nav">
             <br>
-            <a class="nav-link text-white {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
-                <div class="sb-nav-link-icon text-white"><i class="fas fa-tachometer-alt"></i></div>
+            <!-- Dashboard Link -->
+            <a class="nav-link text-white {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"
+                href="{{ route('admin.dashboard') }}">
+                <div class="sb-nav-link-icon text-white">
+                    <!-- Dashboard Icon SVG -->
+                    <svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="grid-2" role="img"
+                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="svg-inline--fa fa-grid-2 fa-lg">
+                        <path fill="currentColor"
+                            d="M224 80c0-26.5-21.5-48-48-48L80 32C53.5 32 32 53.5 32 80l0 96c0 26.5 21.5 48 48 48l96 0c26.5 0 48-21.5 48-48l0-96zm0 256c0-26.5-21.5-48-48-48l-96 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l96 0c26.5 0 48-21.5 48-48l0-96zM288 80l0 96c0 26.5 21.5 48 48 48l96 0c26.5 0 48-21.5 48-48l0-96c0-26.5-21.5-48-48-48l-96 0c-26.5 0-48 21.5-48 48zM480 336c0-26.5-21.5-48-48-48l-96 0c-26.5 0-48 21.5-48 48l0 96c0 26.5 21.5 48 48 48l96 0c26.5 0 48-21.5 48-48l0-96z"
+                            class=""></path>
+                    </svg>
+                </div>
                 Dashboard
             </a>
-            <a class="nav-link text-white {{ request()->routeIs('admin.reports') ? 'active' : '' }}" href="{{ route('admin.reports') }}">
-                <div class="sb-nav-link-icon text-white"><i class="fa-solid fa-file"></i></div>
+
+            <!-- Reports Dropdown -->
+            <a class="nav-link collapsed text-white {{ request()->routeIs('admin.damage_item_report') || request()->routeIs('admin.total_item_report') || request()->routeIs('admin.sales_report') || request()->routeIs('admin.void_report') || request()->routeIs('admin.return_item_report') ? 'active' : '' }}"
+                href="#" data-bs-toggle="collapse" data-bs-target="#collapseReports"
+                aria-expanded="{{ request()->routeIs('admin.damage_item_report') || request()->routeIs('admin.total_item_report') || request()->routeIs('admin.sales_report') || request()->routeIs('admin.return_item_report') ? 'true' : 'false' }}"
+                aria-controls="collapseReports">
+                <div class="sb-nav-link-icon text-white"><i class="fas fa-chart-line"></i></div>
                 Reports
+                <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down text-white"></i></div>
             </a>
-            <a class="nav-link text-white {{ request()->routeIs('admin.toga_fines') ? 'active' : '' }}" href="{{ route('admin.toga_fines') }}">
-                <div class="sb-nav-link-icon text-white"><i class="fa-solid fa-graduation-cap"></i></div>
+            <div class="collapse {{ request()->routeIs('admin.damage_item_report') || request()->routeIs('admin.total_item_report') || request()->routeIs('admin.sales_report') || request()->routeIs('admin.void_report') || request()->routeIs('admin.return_item_report') ? 'show' : '' }}"
+                id="collapseReports" aria-labelledby="headingReports" data-bs-parent="#sidenavAccordion">
+                <nav class="sb-sidenav-menu-nested">
+                    <!-- All Items Report -->
+                    <a class="nav-link text-white {{ request()->routeIs('admin.total_item_report') ? 'active' : '' }}"
+                        href="{{ route('admin.total_item_report') }}">
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-clipboard-list"></i></div>
+                        All Items
+                    </a>
+                    <!-- All Items Report -->
+                    <a class="nav-link text-white {{ request()->routeIs('admin.sales_report') ? 'active' : '' }}"
+                        href="{{ route('admin.sales_report') }}">
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-dollar-sign"></i></div>
+                        Sales
+                    </a>
+                    <!-- Damage Items Report -->
+                    <a class="nav-link text-white {{ request()->routeIs('admin.damage_item_report') ? 'active' : '' }}"
+                        href="{{ route('admin.damage_item_report') }}">
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-exclamation-triangle"></i></div>
+                        Damage Items
+                    </a>
+                    <!-- Void Logs Report -->
+                    <a class="nav-link text-white {{ request()->routeIs('admin.void_report') ? 'active' : '' }}"
+                        href="{{ route('admin.void_report') }}">
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-ban"></i></div>
+                        Void Logs
+                    </a>
+                    <!-- Returned Items Report -->
+                    <a class="nav-link text-white {{ request()->routeIs('admin.return_item_report') ? 'active' : '' }}"
+                        href="{{ route('admin.return_item_report') }}">
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-undo"></i></div>
+                        Returned Items
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Toga & Fines Link -->
+            <a class="nav-link text-white {{ request()->routeIs('admin.toga_fines') ? 'active' : '' }}"
+                href="{{ route('admin.toga_fines') }}">
+                <div class="sb-nav-link-icon text-white"><i class="fas fa-graduation-cap"></i></div>
                 Toga & Fines
             </a>
-            <a class="nav-link text-white {{ request()->routeIs('admin.userprofile') ? 'active' : '' }}" href="{{ route('admin.userprofile') }}">
+
+            <!-- User Profile Link -->
+            <a class="nav-link text-white {{ request()->routeIs('admin.userprofile') ? 'active' : '' }}"
+                href="{{ route('admin.userprofile') }}">
                 <div class="sb-nav-link-icon text-white"><i class="fas fa-user"></i></div>
                 User Profile
             </a>
-            <!-- Other admin links -->
+
+            <!-- Add more admin links with respective icons here -->
         </div>
     </div>
     <div class="sb-sidenav-footer bg-transparent text-white">

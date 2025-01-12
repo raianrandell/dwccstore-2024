@@ -9,8 +9,11 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use PhpOffice\PhpSpreadsheet\RichText\RichText;
 
 class ExpiredItemReportExport implements FromCollection, WithHeadings, WithEvents, WithCustomStartCell
 {
@@ -31,7 +34,6 @@ class ExpiredItemReportExport implements FromCollection, WithHeadings, WithEvent
     {
         $query = ExpiredItem::query();
 
-        // Apply filters if present
         if ($this->startDate) {
             $query->whereDate('created_at', '>=', $this->startDate);
         }
@@ -48,7 +50,6 @@ class ExpiredItemReportExport implements FromCollection, WithHeadings, WithEvent
             $query->where('category', 'like', '%' . $this->category . '%');
         }
 
-        // Fetch the filtered data
         return $query->get()->map(function ($item) {
             return [
                 'Barcode Number' => "'" . $item->barcode,
@@ -56,7 +57,7 @@ class ExpiredItemReportExport implements FromCollection, WithHeadings, WithEvent
                 'Category' => $item->category ?? 'No Category',
                 'Quantity' => $item->quantity,
                 'Date Encoded' => $item->created_at->format('m-d-Y'),
-                'Expiration Date' => $item->expiration_date,
+                'Expiration Date' => Carbon::parse($item->expiration_date)->format('m-d-Y'),
             ];
         });
     }
@@ -68,7 +69,7 @@ class ExpiredItemReportExport implements FromCollection, WithHeadings, WithEvent
 
     public function startCell(): string
     {
-        return 'A7'; // Start data from row 7
+        return 'A9'; // Adjusted start row to accommodate empty rows
     }
 
     public function registerEvents(): array
@@ -76,62 +77,85 @@ class ExpiredItemReportExport implements FromCollection, WithHeadings, WithEvent
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-    
-                // Add dynamic headers
+
+                // Header
                 $sheet->mergeCells('A1:E1');
                 $sheet->setCellValue('A1', 'Divine Word College of Calapan');
-    
+                $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(18)->setName('Calibri');
+                $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
                 $sheet->mergeCells('A2:E2');
                 $sheet->setCellValue('A2', 'DWCC STORE: Sales and Inventory');
-    
+                $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(12)->setName('Calibri');
+                $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
                 $sheet->mergeCells('A3:E3');
                 $sheet->setCellValue('A3', 'Expired Item Report');
-    
-                // Date range information
-                $dateRange = $this->startDate && $this->endDate
-                    ? $this->startDate . ' to ' . $this->endDate
-                    : 'All Dates';
+                $sheet->getStyle('A3')->getFont()->setBold(true)->setSize(14)->setName('Calibri');
+                $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+                // Empty Row Below "Expired Item Report"
                 $sheet->mergeCells('A4:E4');
-                $sheet->setCellValue('A4', "Date Range: $dateRange");
-    
-                // Item Name filter
-                $itemNameFilter = $this->itemName ? $this->itemName : 'All Items';
+                $sheet->setCellValue('A4', '');
+
+                // Date Range
+                $dateRangeLabel = 'Date Range: ';
+                $dateRangeValue = $this->startDate && $this->endDate
+                    ? Carbon::createFromFormat('Y-m-d', $this->startDate)->format('m-d-Y') . ' - ' . Carbon::createFromFormat('Y-m-d', $this->endDate)->format('m-d-Y')
+                    : 'All Dates';
+                $dateRangeRichText = new RichText();
+                $dateRangeRichText->createTextRun($dateRangeLabel)->getFont()->setBold(true);
+                $dateRangeRichText->createText($dateRangeValue);
                 $sheet->mergeCells('A5:E5');
-                $sheet->setCellValue('A5', "Item Name: $itemNameFilter");
-    
-                // Category filter
-                $categoryFilter = $this->category ? $this->category : 'All Categories';
+                $sheet->setCellValue('A5', $dateRangeRichText);
+
+                // Item Name
+                $itemNameLabel = 'Item Name: ';
+                $itemNameValue = $this->itemName ?? 'All Items';
+                $itemNameRichText = new RichText();
+                $itemNameRichText->createTextRun($itemNameLabel)->getFont()->setBold(true);
+                $itemNameRichText->createText($itemNameValue);
                 $sheet->mergeCells('A6:E6');
-                $sheet->setCellValue('A6', "Category: $categoryFilter");
-    
-                // Styling for dynamic headers
-                $sheet->getStyle('A1:A6')->getFont()->setBold(true);
-                $sheet->getStyle('A1:A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    
-                // Adjust column widths for the data
-                $sheet->getColumnDimension('A')->setAutoSize(true);
-                $sheet->getColumnDimension('B')->setAutoSize(true);
-                $sheet->getColumnDimension('C')->setAutoSize(true);
-                $sheet->getColumnDimension('D')->setAutoSize(true);
-                $sheet->getColumnDimension('E')->setAutoSize(true);
-    
-                // Footer: Generated By and Generation Date
-                $generatedBy = Auth::user()->full_name; // Replace with dynamic user info
-                $generationDate = Carbon::now()->format('m-d-Y h:i:s a'); // Current date and time
-    
-                // Inserting Generated By and Generation Date at the bottom
-                $sheet->mergeCells('A' . ($sheet->getHighestRow() + 2) . ':E' . ($sheet->getHighestRow() + 2));
-                $sheet->setCellValue('A' . ($sheet->getHighestRow() + 1), "Generated By: $generatedBy");
-                $sheet->mergeCells('A' . ($sheet->getHighestRow() + 1) . ':E' . ($sheet->getHighestRow() + 1));
-    
-                $sheet->mergeCells('A' . ($sheet->getHighestRow() + 2) . ':E' . ($sheet->getHighestRow() + 2));
-                $sheet->setCellValue('A' . ($sheet->getHighestRow() + 2), "Generation Date: $generationDate");
-    
-                // Styling for the footer
-                $sheet->getStyle('A' . ($sheet->getHighestRow() - 1) . ':A' . ($sheet->getHighestRow() + 2))
-                    ->getFont()->setItalic(true)->setSize(10);
-                $sheet->getStyle('A' . ($sheet->getHighestRow() - 1) . ':A' . ($sheet->getHighestRow() + 2))
-                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                $sheet->setCellValue('A6', $itemNameRichText);
+
+                // Category
+                $categoryLabel = 'Category: ';
+                $categoryValue = $this->category ?? 'All Categories';
+                $categoryRichText = new RichText();
+                $categoryRichText->createTextRun($categoryLabel)->getFont()->setBold(true);
+                $categoryRichText->createText($categoryValue);
+                $sheet->mergeCells('A7:E7');
+                $sheet->setCellValue('A7', $categoryRichText);
+
+                // Empty Row Below "Category"
+                $sheet->mergeCells('A8:E8');
+                $sheet->setCellValue('A8', '');
+
+                // Table Header Styling
+                $sheet->getStyle('A9:F9')->getFont()->setBold(true)->setSize(12)->getColor()->setRGB('FFFFFF');
+                $sheet->getStyle('A9:F9')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF20C997');
+                $sheet->getStyle('A9:F9')->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+                $sheet->getStyle('A9:F9')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+                // Auto-size Columns
+                foreach (range('A', 'F') as $column) {
+                    $sheet->getColumnDimension($column)->setAutoSize(true);
+                }
+
+                  // --- Footer Styling ---
+                  $generatedBy = Auth::guard('inventory')->check() ? Auth::guard('inventory')->user()->full_name : 'N/A';
+                  $generationDate = Carbon::now()->format('F d, Y h:i:s a');
+                  $footerStartRow = $sheet->getHighestRow() + 2;
+  
+                  $sheet->mergeCells('A' . $footerStartRow . ':B' . $footerStartRow);
+                  $sheet->setCellValue('A' . ($footerStartRow), "Generated By: $generatedBy");
+                  $sheet->mergeCells('A' . ($footerStartRow + 1) . ':B' . ($footerStartRow + 1));
+                  $sheet->setCellValue('A' . ($footerStartRow + 1), "Generation Date: $generationDate");
+  
+                  $sheet->getStyle('A' . $footerStartRow . ':B' . ($footerStartRow + 1))
+                      ->getFont()->setItalic(true)->setSize(10);
+                  $sheet->getStyle('A' . ($footerStartRow) . ':B' . ($footerStartRow + 1))
+                      ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
             },
         ];
     }

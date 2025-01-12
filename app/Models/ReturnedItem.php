@@ -19,7 +19,7 @@ class ReturnedItem extends Model
 
     public function item()
     {
-        return $this->belongsTo(Item::class, 'item_id', 'id'); // Adjust keys if necessary
+        return $this->belongsTo(Item::class, 'item_name', 'item_name');
     }
 
 }

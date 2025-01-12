@@ -2,7 +2,8 @@
 
 namespace App\Exports;
 
-use App\Models\DamageTransaction;
+use App\Models\Item;
+use App\Models\Category;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -14,60 +15,59 @@ use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\Style\Fill;  
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
-
-class DamageItemReportExport implements FromCollection, WithHeadings, WithEvents, WithCustomStartCell
+class LowStockItemReportExport implements FromCollection, WithHeadings, WithEvents, WithCustomStartCell
 {
     protected $startDate;
     protected $endDate;
     protected $itemName;
     protected $category;
 
-    public function __construct($startDate, $endDate, $itemName = null, $category = null)
+    public function __construct($startDate, $endDate, $itemName = null, $category = null, $categoryName = null)
     {
         $this->startDate = $startDate;
         $this->endDate = $endDate;
         $this->itemName = $itemName;
         $this->category = $category;
+        $this->categoryName = $categoryName ? Category::find($category)->category_name ?? 'No Category' : null;
     }
 
     public function collection()
     {
-        $query = DamageTransaction::with('category');
+        $query = Item::whereColumn('qtyInStock', '<=', 'low_stock_limit');
 
-        // Apply filters if present
-        if ($this->startDate) {
-            $query->whereDate('created_at', '>=', $this->startDate);
+        // Apply date filters
+        if ($this->startDate && $this->endDate && $this->startDate === $this->endDate) {
+            $query->whereDate('created_at', $this->startDate);
+        } elseif ($this->startDate && $this->endDate) {
+            $query->whereBetween('created_at', [$this->startDate, $this->endDate]);
         }
 
-        if ($this->endDate) {
-            $query->whereDate('created_at', '<=', $this->endDate);
-        }
-
+        // Apply item name filter
         if ($this->itemName) {
             $query->where('item_name', $this->itemName);
         }
 
+        // Apply category filter
         if ($this->category) {
-            $query->whereHas('category', function ($q) {
-                $q->where('category_name', $this->category);
-            });
+            $query->where('cat_id', $this->category);
         }
 
         // Fetch the filtered data
         return $query->get()->map(function ($item) {
+            $categoryName = Category::find($item->cat_id)->category_name ?? 'No Category';
             return [
                 'Item Name' => $item->item_name,
-                'Category' => $item->category->category_name ?? 'No Category',
-                'Quantity' => $item->quantity,
-                'Date Encoded' => $item->created_at->format('m-d-Y'),
-                'Damage Description' => $item->damage_description,
+                'Category' => $categoryName,
+                'Quantity in Stock' => $item->qtyInStock,
+                'Low Stock Limit' => $item->low_stock_limit,
+                'Date Added' => $item->created_at->format('m-d-Y'),
             ];
         });
     }
 
     public function headings(): array
     {
-        return ['Item Name', 'Category', 'Quantity', 'Date Encoded', 'Damage Description'];
+        return ['Item Name', 'Category', 'Quantity in Stock', 'Low Stock Limit', 'Date Added'];
     }
 
     public function startCell(): string
@@ -80,24 +80,24 @@ class DamageItemReportExport implements FromCollection, WithHeadings, WithEvents
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-    
-                // --- Add dynamic headers --- 
+
+                // --- Add dynamic headers ---
                 $sheet->mergeCells('A1:E1');
                 $sheet->setCellValue('A1', 'Divine Word College of Calapan');
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
                 $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    
+
                 $sheet->mergeCells('A2:E2');
                 $sheet->setCellValue('A2', 'DWCC STORE: Sales and Inventory');
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    
+
                 $sheet->mergeCells('A3:E3');
-                $sheet->setCellValue('A3', 'Damage Item Report');
+                $sheet->setCellValue('A3', 'Low Stock Item Report');
                 $sheet->getStyle('A3')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    
-                // --- Filter Information --- 
+
+                // --- Filter Information ---
                 $sheet->getStyle('A4:A6')->getFont()->setBold(true);
 
                 // Date Range
@@ -113,17 +113,22 @@ class DamageItemReportExport implements FromCollection, WithHeadings, WithEvents
                 $sheet->setCellValue('B5', $itemNameFilter);
 
                 // Category
-                $categoryFilter = $this->category ? $this->category : 'All Categories';
+                $categoryFilter = 'All Categories';
+                if ($this->category) {
+                    $category = Category::find($this->category);
+                    $categoryFilter = $category ? $category->category_name : 'Unknown Category';
+                }
                 $sheet->setCellValue('A6', "Category:");
                 $sheet->setCellValue('B6', $categoryFilter);
-    
+
+
                 // --- Data Table Styling ---
                 $sheet->getColumnDimension('A')->setWidth(20);
                 $sheet->getColumnDimension('B')->setWidth(30);
                 $sheet->getColumnDimension('C')->setWidth(20);
                 $sheet->getColumnDimension('D')->setWidth(20);
-                $sheet->getColumnDimension('E')->setWidth(40);
-    
+                $sheet->getColumnDimension('E')->setWidth(20);
+
                 // Header row style
                 $headerRow = 'A7:E7';
                 $headerStyleArray = [
@@ -143,7 +148,7 @@ class DamageItemReportExport implements FromCollection, WithHeadings, WithEvents
                 $dataEndRow = $sheet->getHighestRow();
                 $dataRange = "A{$dataStartRow}:E{$dataEndRow}";
                 $sheet->getStyle($dataRange)->applyFromArray($dataStyleArray);
-    
+
                 // --- Footer ---
                 $generatedBy = Auth::guard('inventory')->check() ? Auth::guard('inventory')->user()->full_name : 'N/A';
                 $generationDate = Carbon::now()->format('F d, Y h:i:s a');

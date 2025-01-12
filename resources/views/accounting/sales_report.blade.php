@@ -3,6 +3,7 @@
 @section('title', 'Sales Report')
 
 @section('content')
+
 <ol class="breadcrumb mb-3 mt-5">
     <li class="breadcrumb-item"><a href="{{ route('accounting.dashboard') }}">Home</a></li>
     <li class="breadcrumb-item active">Sales Report</li>
@@ -11,19 +12,21 @@
 <!-- Page Title and Export Options -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <a href="{{ route('cashier.sales_report.pdf', [
+        <a href="{{ route('accounting.sales_report.pdf', [
             'start_date' => request('start_date'),
             'end_date' => request('end_date'),
             'payment' => request('payment'),
-            'category' => request('category')
+            'category' => request('category'),
+            'item_name' => request('item_name')
         ]) }}" class="btn btn-danger me-2">
             <i class="fas fa-file-pdf"></i> Export PDF
         </a>
-        <a href="{{ route('cashier.sales_report.excel', [
+        <a href="{{ route('accounting.sales_report.excel', [
             'start_date' => request('start_date'),
             'end_date' => request('end_date'),
             'payment' => request('payment'),
-            'category' => request('category')
+            'category' => request('category'),
+            'item_name' => request('item_name')
         ]) }}" class="btn btn-success">
             <i class="fas fa-file-excel"></i> Export Excel
         </a>
@@ -35,50 +38,73 @@
     <div class="card-body">
         <form method="GET" action="{{ route('accounting.sales_report') }}">
             <div class="row">
+                <!-- Start Date -->
                 <div class="col-md-2">
                     <label for="startDate" class="form-label">Start Date</label>
                     <input type="date" id="startDate" name="start_date" class="form-control" value="{{ request('start_date') }}">
                 </div>
+                
+                <!-- End Date -->
                 <div class="col-md-2">
                     <label for="endDate" class="form-label">End Date</label>
                     <input type="date" id="endDate" name="end_date" class="form-control" value="{{ request('end_date') }}">
                 </div>
+
+                <!-- Item Name (New Filter) -->
+                <div class="col-md-2">
+                    <label for="item_name" class="form-label">Filter by Item Name</label>
+                    <select id="item_name" name="item_name" class="form-select w-40">
+                        <option value="">All Items</option>
+                        @foreach ($items as $id => $item_name)
+                            <option value="{{ $item_name }}" {{ request('item_name') == $item_name ? 'selected' : '' }}>
+                                {{ $item_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                
+                <!-- Category -->
                 <div class="col-md-2">
                     <label for="category" class="form-label">Filter by Category</label>
                     <select id="category" name="category" class="form-select">
                         <option value="">All Categories</option>
-                            @foreach ($categories as $id => $category_name)
-                                <option value="{{ $id }}" {{ request('category') == $id ? 'selected' : '' }}>
-                                    {{ $category_name }}
-                                </option>
-                            @endforeach
+                        @foreach ($categories as $id => $category_name)
+                            <option value="{{ $id }}" {{ request('category') == $id ? 'selected' : '' }}>
+                                {{ $category_name }}
+                            </option>
+                        @endforeach
                     </select>
                 </div>
+                
+                <!-- Payment Method -->
                 <div class="col-md-2">
                     <label for="payment" class="form-label">Filter by Payment Method</label>
                     <select id="payment" name="payment" class="form-select">
                         <option value="">All Methods</option>
                         <option value="Cash" {{ request('payment') == 'Cash' ? 'selected' : '' }}>Cash</option>
-                        <option value="Credit" {{ request('payment') == 'Credit' ? 'selected' : '' }}>Credit</option>
-                        <option value="GCASH" {{ request('payment') == 'Gcash' ? 'selected' : '' }}>Gcash</option>
+                        <option value="GCash" {{ request('payment') == 'GCASH' ? 'selected' : '' }}>GCash</option>
+                        <option value="Credit" {{ request('payment') == 'Credit' ? 'selected' : '' }}>Credit</option>              
                     </select>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <!-- Filter Button -->
+                
+                <!-- Apply Filters Button -->
+                <div class="col-md-1 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter"></i> Apply Filters
+                        <i class="fas fa-filter"></i> Apply
                     </button>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <!-- Reset Button -->
+                
+                <!-- Reset Filters Button -->
+                <div class="col-md-1 d-flex align-items-end">
                     <a href="{{ route('accounting.sales_report') }}" class="btn btn-secondary w-100">
-                        <i class="fas fa-undo"></i> Reset Filters
+                        <i class="fas fa-undo"></i> Reset
                     </a>
                 </div>
             </div>
         </form>
     </div>
 </div>
+
 
 <!-- Sales Table -->
 <div class="card mb-4" style="box-shadow: 12px 12px 7px rgba(0, 0, 0, 0.3);">
@@ -105,7 +131,7 @@
                 @foreach ($transactions as $transaction)
                     @foreach ($transaction->items as $item)
                         <tr>
-                            <td>{{ $transaction->created_at->format('Y-m-d H:i:s') }}</td>
+                            <td>{{ $transaction->created_at->format('m-d-Y h:i:s a') }}</td>
                             <td>{{ $transaction->transaction_no }}</td>
                             <td>{{ $item->item_name }}</td>
                             <td>{{ $item->item->category->category_name ?? 'N/A' }}</td>

@@ -16,5 +16,10 @@ class ItemForRent extends Model
         'total_quantity',
         'quantity_borrowed',
     ];
+
+       public function borrowers()
+     {
+         return $this->hasMany(Borrower::class, 'item_id');
+     }
 }
 

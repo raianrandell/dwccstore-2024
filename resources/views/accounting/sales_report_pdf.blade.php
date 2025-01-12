@@ -87,7 +87,7 @@
         <p> Gov. Infantado St. Calapan City, Oriental Mindoro, Philippines</p>
         <h3>DWCC STORE: Sales and Inventory</h3>
     </div>
-<br>
+
     <!-- Report Title -->
     <h3 style="text-align: center">Sales Report</h3>
     <div class="filter-info">

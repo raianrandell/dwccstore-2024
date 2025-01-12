@@ -54,9 +54,7 @@
                     <select id="itemName" name="item_name" class="form-select">
                         <option value="">All Items</option>
                         @foreach ($itemNames as $itemName)
-                            <option value="{{ $itemName }}" {{ request('item_name') == $itemName ? 'selected' : '' }}>
-                                {{ $itemName }}
-                            </option>
+                            <option value="{{ $itemName }}" {{ request('item_name') == $itemName ? 'selected' : '' }}>{{ $itemName }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -106,7 +104,6 @@
                     <th>Item Name</th>
                     <th>Category</th>
                     <th>Quantity</th>
-                    <th>Date Encoded</th>
                     <th>Expiration Date</th>
                 </tr>
             </thead>
@@ -117,8 +114,7 @@
                         <td>{{ $expiredItem->item_name }}</td>
                         <td>{{ $expiredItem->category }}</td>
                         <td>{{ $expiredItem->quantity }}</td>
-                        <td>{{ $expiredItem->date_encoded }}</td>
-                        <td>{{ $expiredItem->expiration_date }}</td>
+                        <td>{{ \Carbon\Carbon::parse($expiredItem->expiration_date)->format('m-d-Y') }}</td>
                     </tr>
                 @endforeach
             </tbody>

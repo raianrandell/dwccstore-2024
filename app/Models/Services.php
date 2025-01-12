@@ -11,6 +11,7 @@ class Services extends Model
 
     protected $fillable = [
         'service_name',
+        'status',
     ];
 
     public function serviceItems()

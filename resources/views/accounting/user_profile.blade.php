@@ -4,12 +4,12 @@
 
 @section('content')
 <ol class="breadcrumb mb-3 mt-5">
-    <li class="breadcrumb-item"><a href="{{ route('accounting.dashboard') }}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('inventory.dashboard') }}">Home</a></li>
     <li class="breadcrumb-item active">User Profile</li>
 </ol>
 <div class="scale-wrapper" style="transform: scale(0.9); transform-origin: top left; width: 111.11%;">
 <div class="container">
-    <div class="row mb-4">
+    <div class="row mb-4 mt-5">
         <!-- User Information Section -->
         <div class="col-12">
             <div class="card shadow-sm">
@@ -18,26 +18,18 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label for="emp_id" class="form-label">Employee ID:</label>
+                        <label for="emp_id" class="form-label"><strong>Employee ID/Username:</strong></label>
                         <p class="form-control-plaintext">{{ $user->emp_id }}</p>
                     </div>
                     <div class="mb-3">
-                        <label for="full_name" class="form-label">Full Name:</label>
+                        <label for="full_name" class="form-label"><strong>Full Name:</strong></label>
                         <p class="form-control-plaintext">{{ $user->full_name }}</p>
-                    </div>
-                    <div class="mb-3">
-                        <label for="role" class="form-label">Role:</label>
-                        <p class="form-control-plaintext">{{ $user->user_role }}</p>
-                    </div>
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username:</label>
-                        <p class="form-control-plaintext">{{ $user->username }}</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
+<br>
     <div class="row">
         <!-- Change Password Section -->
         <div class="col-12">
@@ -46,7 +38,16 @@
                     <h5 class="mb-0">Change Password</h5>
                 </div>
                 <div class="card-body">
-                    <form action="{{ route(name: 'user.updatePassword') }}" method="POST">
+                    @if ($errors->any())
+                        <div class="alert alert-danger mt-2 alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i> <!-- Error Icon -->
+                                @foreach ($errors->all() as $error)
+                                    {{ $error }}
+                                @endforeach
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+                    <form action="{{ route('accounting.changePassword') }}" method="POST">
                         @csrf
                         <div class="mb-3">
                             <label for="current_password" class="form-label">Current Password</label>
@@ -62,21 +63,10 @@
                         </div>
                         <button type="submit" class="btn btn-primary">Update Password</button>
                     </form>
-                    @if ($errors->any())
-                        <div class="alert alert-danger mt-2">
-                            <ul>
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-                    @if (session('success'))
-                        <div class="alert alert-success mt-2">{{ session('success') }}</div>
-                    @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
 @endsection
+

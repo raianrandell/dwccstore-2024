@@ -69,7 +69,7 @@
                     <td>
                         <button 
                             type="button" 
-                            class="btn btn-danger btn-sm rounded-circle open-modal" 
+                            class="btn btn-success btn-sm rounded-circle open-modal" 
                             data-id="{{ $item->id }}" 
                             data-name="{{ $item->item_name }}" 
                             data-total="{{ $item->total_quantity }}">
@@ -198,7 +198,7 @@
         
         // Fetch the latest data for the item using an AJAX request
         $.ajax({
-            url: `/items/${itemId}`,
+            url: `/inventory/items/${itemId}`,
             type: 'GET',
             success: function (response) {
                 // Populate modal fields with the updated data
@@ -221,7 +221,7 @@
 
         if (addedQuantity && addedQuantity > 0) {
             $.ajax({
-                url: `/items/${itemId}/add-stock`,
+                url: `/inventory/items/${itemId}/add-stock`,
                 type: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}',

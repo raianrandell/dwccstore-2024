@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Item;
@@ -64,12 +65,36 @@ class CashierController extends Controller
             return back()->with('fail', 'This account is inactive, please contact the administrator.');
         }
 
-        if (Auth::attempt($credentials)) {
-
-            return redirect()->route('cashier.cashier_dashboard')->with('success', 'Login Successful');
+         if (Auth::guard('cashier')->attempt($credentials)) {
+            return redirect()->route('cashier.cashier_dashboard')->with([
+                'success' => 'Login Successful',
+                'full_name' => $user->full_name
+            ]);
         }
 
         return back()->with('fail', 'The password is incorrect.');
+    }
+
+    public function changePassword(Request $request)
+    {
+        // Validate the request
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|min:8|confirmed',
+        ]);
+
+        $user = Auth::guard('cashier')->user();
+
+        // Check if the current password is correct
+        if (!Hash::check($request->current_password, $user->password)) {
+            return redirect()->back()->withErrors(['current_password' => 'Current password is incorrect.']);
+        }
+
+        // Update the password
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return redirect()->route('cashier_login')->with('success', 'Password updated successfully. Please re-login.');
     }
 
     /**
@@ -213,7 +238,7 @@ class CashierController extends Controller
             // Save the transaction details
             $transaction = Transaction::create([
                 'transaction_no' => 'TRX' . time(),
-                'user_id' => Auth::id(),
+                'user_id' => Auth::guard('cashier')->user()->id,
                 'subtotal' => $request->subtotal,
                 'discount' => $request->discount,
                 'total' => $request->total,
@@ -277,7 +302,7 @@ class CashierController extends Controller
      */
     public function fetchItem()
     {
-        $items = Item::all(); // Fetch all items or apply any necessary filtering
+        $items = Item::orderBy('item_name', 'ASC')->get();// Fetch all items or apply any necessary filtering
         $services = Services::orderBy('service_name', 'ASC')->get();
         return view('cashier.sales', compact('items','services')); // Pass items to the sales view
     }
@@ -287,7 +312,7 @@ class CashierController extends Controller
      */
     public function voidRecords(){
          // Fetch all void records from the database
-    $voidRecords = VoidRecords::all();
+         $voidRecords = VoidRecords::orderBy('voided_at', 'ASC')->get();
 
     // Pass the void records to the view
     return view('cashier.void_records', compact('voidRecords'));
@@ -308,7 +333,7 @@ class CashierController extends Controller
                 'item_name' => $request->item_name,
                 'price' => $request->price,
                 'user_id' => $request->user_id, // Store user ID
-                'voided_by' => $request->voided_by, // Store full name
+                'voided_by' => Auth::guard('cashier')->user()->full_name, // Store full name
                 'voided_at' => now(), // Use current timestamp
             ]);
     
@@ -362,8 +387,8 @@ class CashierController extends Controller
         // Fetch filtered records and sort by the latest voided_at
         $voidRecords = $query->orderBy('voided_at', 'desc')->get();
 
-        $items = Item::all();
-        $categories = Category::all();
+        $items = Item::orderBy('item_name', 'ASC')->get();
+        $categories = Category::orderBy('category_name', 'ASC')->get();
     
         // Pass the records and filters to the view
         return view('cashier.void_report', compact('voidRecords', 'items', 'categories'));
@@ -402,7 +427,7 @@ class CashierController extends Controller
         $voidRecords = $query->get();
     
         // Get the full name of the authenticated user
-        $userFullName = Auth::user()->full_name;
+        $userFullName = Auth::guard('cashier')->user()->full_name;
     
         // Generate the PDF with the filtered damage items
         $pdf = PDF::loadView('cashier.void_report_pdf', compact('voidRecords', 'startDate', 'endDate', 'itemName', 'category', 'userFullName'))
@@ -410,11 +435,13 @@ class CashierController extends Controller
             ->setOptions(['isHtml5ParserEnabled' => true, 'isPhpEnabled' => true]);
     
         // Download the generated PDF
-        return $pdf->download('dwcc_college_bookstore_void_item_report.pdf');
+        return $pdf->stream('dwcc_college_bookstore_void_item_report.pdf');
     }
 
     public function exportVoidItemReportExcel(Request $request)
     {
+        $userFullName = Auth::guard('cashier')->user()->full_name;
+        
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $itemName = $request->input('item_name');
@@ -427,53 +454,10 @@ class CashierController extends Controller
     public function userProfile()
     {
         // Retrieve the currently authenticated user
-        $user = auth()->user();
-        return view('cashier.editProfile', compact('user'));
-    }
-    
-
-    // In CashierController.php
-
-public function editProfile()
-{
-    // Get the currently authenticated user
-    $user = auth()->user();
-    
-    // Pass user data to the view
-    return view('cashier.editProfile', compact('user'));
-}
-
-public function updateProfile(Request $request)
-{
-    // Validate the input
-    $request->validate([
-        'username' => 'required|string|max:255|unique:users,username,' . auth()->user()->id,
-        'password' => 'nullable|string|min:5|confirmed',
-    ]);
-
-    // If the Super Admin is editing a cashier's profile
-    if (auth()->user()->user_role == 'Super Admin') {
-        // Retrieve the user by their ID passed in the request
-        $user = User::find($request->input('user_id')); // Add a hidden input for user_id in the form
-    } else {
-        // If it's the logged-in cashier updating their own profile
-        $user = auth()->user();
+        $user = Auth::guard('cashier')->user();
+        return view('cashier.userProfile', compact('user'));
     }
 
-    // Update the username
-    $user->username = $request->input('username');
-
-    // If a password is provided, hash and update it
-    if ($request->filled('password')) {
-        $user->password = bcrypt($request->input('password'));
-    }
-
-    // Save the updated user information
-    $user->save();
-
-    // Redirect back with success message
-    return redirect()->route('cashier.userprofile')->with('success', 'Profile updated successfully!');
-}
 
     //this functiion is for credit transaction
     public function credit()
@@ -486,13 +470,14 @@ public function updateProfile(Request $request)
     {
         $currentDate = Carbon::now()->startOfDay(); // Standardize to start of the day
     
-        // Fetch borrowers with overdue return dates
-        $borrowers = DB::table('borrowers')
-            ->whereDate('expected_date_returned', '<', Carbon::now()->startOfDay()) // Ensure date-only comparison
+        // Fetch borrowers with overdue return dates and include related item details
+        $borrowers = Borrower::with('item') // Eager load the related item
+            ->whereDate('expected_date_returned', '<', $currentDate)
             ->get();
     
         return view('cashier.fines_transaction', compact('borrowers'));
-    }    
+    }
+    
 
     public function finesHistory()
     {
@@ -707,16 +692,22 @@ public function updateProfile(Request $request)
     
     public function returnReport(Request $request)
     {
-         // Fetch query parameters for filtering
+        // Fetch query parameters for filtering
         $itemName = $request->get('item_name');
-
-         // Fetch all unique items for the dropdown
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        $categoryName = $request->get('category');
+    
+        // Fetch all unique items for the dropdown
         $items = DB::table('returned_items')
-        ->select('item_name')
-        ->distinct()
-        ->orderBy('item_name', 'asc')
-        ->get();
-
+            ->select('item_name')
+            ->distinct()
+            ->orderBy('item_name', 'asc')
+            ->get();
+    
+        // Fetch all unique categories for the dropdown
+        $categories = Category::orderBy('category_name')->get(); // Assuming you have a Category model
+    
         // Build the query
         $query = ReturnedItem::with(['item.category'])
             ->select([
@@ -725,69 +716,91 @@ public function updateProfile(Request $request)
                 'return_quantity',
                 'reason',
                 'replacement_item',
+                'created_at', // Include the return date column
             ]);
-
+    
         // Apply filters if provided
         if (!empty($itemName)) {
             $query->where('item_name', 'LIKE', "%$itemName%");
         }
-
+    
+        if (!empty($startDate) && !empty($endDate)) {
+            $query->whereDate('created_at', '>=', $startDate)
+                  ->whereDate('created_at', '<=', $endDate);
+        } elseif (!empty($startDate)) {
+            $query->whereDate('created_at', '>=', $startDate);
+        } elseif (!empty($endDate)) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+    
+        if (!empty($categoryName)) {
+            $query->whereHas('item.category', function ($q) use ($categoryName) {
+                $q->where('category_name', $categoryName);
+            });
+        }
+    
         // Execute the query and get the results
         $returnedItems = $query->get();
-
-        return view('cashier.return_item_report', compact('returnedItems', 'items'));
+    
+        return view('cashier.return_item_report', compact('returnedItems', 'items', 'categories'));
     }
-
     
 
     public function exportReturnedItemReportPdf(Request $request)
     {
         // Retrieve the filtered data
         $itemName = $request->input('item_name');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $categoryName = $request->input('category');
     
         // Query the returned items based on the filter
-        $returnedItemsQuery = ReturnedItem::query();
+        $returnedItemsQuery = ReturnedItem::query()->with('item.category');
     
         if ($itemName) {
             $returnedItemsQuery->where('item_name', $itemName);
         }
     
+        if ($startDate && $endDate) {
+            $returnedItemsQuery->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+        } elseif ($startDate) {
+            $returnedItemsQuery->where('created_at', '>=', $startDate . ' 00:00:00');
+        } elseif ($endDate) {
+            $returnedItemsQuery->where('created_at', '<=', $endDate . ' 23:59:59');
+        }
+
+        if ($categoryName) {
+            $returnedItemsQuery->whereHas('item.category', function ($q) use ($categoryName) {
+                $q->where('category_name', $categoryName);
+            });
+        }
+    
         $returnedItems = $returnedItemsQuery->get();
     
-        // Prepare data for the PDF
-        $data = [
-            'itemName' => $itemName,
-            'returnedItems' => $returnedItems,
-            'userFullName' => auth()->user()->full_name,
-        ];
+        // Get the full name of the authenticated user
+        $userFullName = Auth::guard('cashier')->user()->full_name;
     
-        // Load the PDF view and pass the data
-        $pdf = \PDF::loadView('cashier.return_item_report_pdf', $data);
+        // Generate the PDF with the filtered damage items
+        $pdf = PDF::loadView('cashier.return_item_report_pdf', compact('returnedItems', 'startDate', 'endDate', 'itemName', 'categoryName', 'userFullName'))
+            ->setPaper('A4', 'portrait')
+            ->setOptions(['isHtml5ParserEnabled' => true, 'isPhpEnabled' => true]);
     
-        // Set PDF metadata (optional)
-        $pdf->setPaper('A4', 'portrait');
-    
-        // Return the generated PDF for download
-        return $pdf->download('Returned_Item_Report.pdf');
+        // View the generated PDF
+        return $pdf->stream('dwcc_college_bookstore_return_item_report.pdf');
     }
 
     public function exportReturnedItemReportExcel(Request $request)
     {
         $itemName = $request->query('item_name');
-
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+        $categoryName = $request->query('category');
+    
         return Excel::download(
-            new ReturnedItemsReportExport($itemName),
+            new ReturnedItemsReportExport($itemName, $startDate, $endDate, $categoryName),
             'Returned_Items_Report.xlsx'
         );
     }
-
-
-
-    public function store_sales_report(Request $request)
-    {
-       
-    }
-    
 
     public function sales_report(Request $request)
     {
@@ -796,9 +809,10 @@ public function updateProfile(Request $request)
         $endDate = $request->input('end_date');
         $category = $request->input('category');
         $paymentMethod = $request->input('payment');
+        $itemName = $request->input('item_name'); // New filter
     
         // Query Transactions with filters
-        $transactions = Transaction::with(['items', 'user'])
+        $transactions = Transaction::with(['items', 'user', 'items.item.category'])
             ->when($startDate, function ($query, $startDate) {
                 return $query->whereDate('created_at', '>=', $startDate);
             })
@@ -808,25 +822,32 @@ public function updateProfile(Request $request)
             ->when($paymentMethod, function ($query, $paymentMethod) {
                 return $query->where('payment_method', $paymentMethod);
             })
-            ->whereHas('items', function ($query) use ($category) {
-                $query->when($category, function ($query, $category) {
-                    $query->whereHas('item', function ($query) use ($category) {
-                        $query->where('cat_id', $category);
-                    });
+            ->when($category, function ($query, $category) {
+                return $query->whereHas('items.item', function ($q) use ($category) {
+                    $q->where('cat_id', $category);
+                });
+            })
+            ->when($itemName, function ($query, $itemName) {
+                return $query->whereHas('items.item', function ($q) use ($itemName) {
+                    $q->where('item_name', $itemName);
                 });
             })
             ->orderBy('created_at', 'desc')
             ->get();
     
         // Calculate total sales
-        $totalSales = $transactions->sum('total');
+        $totalSales = $transactions->sum(function ($transaction) {
+            return $transaction->items->sum('total');
+        });
     
-        // Retrieve categories as key-value pairs
+        // Retrieve categories and items as key-value pairs
         $categories = Category::pluck('category_name', 'id');
+        $items = Item::orderBy('item_name', 'ASC')->pluck('item_name', 'id');
     
         // Pass data to the view
-        return view('cashier.sales_report', compact('transactions', 'categories', 'totalSales', 'paymentMethod', 'category'));
+        return view('cashier.sales_report', compact('transactions', 'categories', 'items', 'totalSales', 'paymentMethod', 'category', 'itemName'));
     }
+    
     
     public function exportSalesReportPdf(Request $request)
     {
@@ -835,9 +856,10 @@ public function updateProfile(Request $request)
         $endDate = $request->input('end_date');
         $categoryId = $request->input('category');
         $paymentMethod = $request->input('payment');
-    
+        $itemName = $request->input('item_name'); // New filter
+
         // Fetch filtered transactions
-        $transactions = Transaction::with(['items', 'user'])
+        $transactions = Transaction::with(['items', 'user', 'items.item.category'])
             ->when($startDate, function ($query, $startDate) {
                 return $query->whereDate('created_at', '>=', $startDate);
             })
@@ -847,62 +869,94 @@ public function updateProfile(Request $request)
             ->when($paymentMethod, function ($query, $paymentMethod) {
                 return $query->where('payment_method', $paymentMethod);
             })
-            ->whereHas('items', function ($query) use ($categoryId) {
-                $query->when($categoryId, function ($query, $categoryId) {
-                    $query->whereHas('item', function ($query) use ($categoryId) {
-                        $query->where('cat_id', $categoryId);
-                    });
+            ->when($categoryId, function ($query, $categoryId) {
+                return $query->whereHas('items.item', function ($q) use ($categoryId) {
+                    $q->where('cat_id', $categoryId);
+                });
+            })
+            ->when($itemName, function ($query, $itemName) {
+                return $query->whereHas('items.item', function ($q) use ($itemName) {
+                    $q->where('item_name', 'like', "%$itemName%"); // Flexible search
                 });
             })
             ->orderBy('created_at', 'desc')
             ->get();
-    
+
         // Calculate total sales
-        $totalSales = $transactions->sum('total');
-    
+        $totalSales = $transactions->sum(function ($transaction) {
+            return $transaction->items->sum('total');
+        });
+
         // Retrieve category name if filter is applied
         $categoryName = $categoryId 
             ? Category::find($categoryId)->category_name 
             : 'All Categories';
-    
-        $userFullName = Auth::user()->full_name;
-    
+
+        // Retrieve item name if filter is applied
+        $itemNameLabel = $itemName 
+            ? $itemName 
+            : 'All Items';
+
+        // Retrieve cashier name
+        $userFullName = Auth::guard('cashier')->user()->full_name;
+
         // Generate PDF
-        $pdf = Pdf::loadView('cashier.sales_report_pdf', compact('transactions', 'totalSales', 'userFullName', 'paymentMethod', 'categoryName', 'startDate', 'endDate'));
-    
-        // Download PDF
-        return $pdf->download('sales_report.pdf');
+        $pdf = Pdf::loadView('cashier.sales_report_pdf', compact('transactions', 'totalSales', 'userFullName', 'paymentMethod', 'categoryName', 'itemNameLabel', 'startDate', 'endDate'));
+
+        // View PDF
+        return $pdf->stream('sales_report.pdf');
     }
+
 
     public function exportSalesReportExcel(Request $request)
     {
-        // Get filtered transactions based on request parameters
+        // Get filter values
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $selectedPaymentMethod = $request->input('payment');
+        $categoryId = $request->input('category');
+        $itemName = $request->input('item_name'); // New filter
+    
+        // Build the query
         $query = Transaction::query();
     
-        if ($request->filled('start_date')) {
-            $query->where('created_at', '>=', $request->input('start_date') . ' 00:00:00');
+        // Date Range Filtering
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+        } elseif ($startDate) {
+            $query->where('created_at', '>=', $startDate . ' 00:00:00');
+        } elseif ($endDate) {
+            $query->where('created_at', '<=', $endDate . ' 23:59:59');
         }
     
-        if ($request->filled('end_date')) {
-            $query->where('created_at', '<=', $request->input('end_date') . ' 23:59:59');
+        // Payment Method Filtering
+        if ($selectedPaymentMethod) {
+            $query->where('payment_method', $selectedPaymentMethod);
         }
     
-        if ($request->filled('payment')) {
-            $query->where('payment_method', $request->input('payment'));
-        }
-    
-        if ($request->filled('category')) {
-            // Ensure that the category filter works properly with the relationships
-            $query->whereHas('items', function ($query) use ($request) {
-                $query->whereHas('item', function ($query) use ($request) {
-                    $query->where('cat_id', $request->input('category'));
-                });
+        // Category Filtering
+        if ($categoryId) {
+            $query->whereHas('items.item', function ($q) use ($categoryId) {
+                $q->where('cat_id', $categoryId);
             });
         }
     
-        $transactions = $query->with(['items', 'items.item', 'user'])->get();   
-        return Excel::download(new SalesReportExport($transactions), 'sales_report.xlsx');
-    }    
+        // Item Name Filtering (Keep this to filter transactions)
+        if ($itemName) {
+            $query->whereHas('items.item', function ($q) use ($itemName) {
+                $q->where('item_name', $itemName);
+            });
+        }
+    
+        // Load relationships and get results
+        $transactions = $query->with(['items', 'items.item.category', 'user'])->get();
+    
+        // Pass filter parameters to SalesReportExport
+        $categoryName = $categoryId ? Category::find($categoryId)->category_name : 'All Categories';
+        $itemNameLabel = $itemName ? $itemName : 'All Items'; // Pass the itemName string directly
+    
+        return Excel::download(new SalesReportExport($transactions, $startDate, $endDate, $categoryName, $selectedPaymentMethod, $itemName), 'sales_report.xlsx');
+    }
     
     public function services()
     {
@@ -960,7 +1014,7 @@ public function updateProfile(Request $request)
         // Create the Transaction
         $transaction = Transaction::create([
             'transaction_no' => 'TRX' . time(), // Robust transaction number
-            'user_id' => Auth::id(),
+            'user_id' => Auth::guard('cashier')->user()->id,
             'subtotal' => $request->subtotal,
             'discount' => $request->discount,
             'total' => $request->total,
@@ -1081,7 +1135,6 @@ public function getServiceTransactionItems(Request $request)
 
     return response()->json($response);
 }
-
 
 
 }

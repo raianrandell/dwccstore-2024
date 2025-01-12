@@ -55,10 +55,9 @@
             <table id="datatablesSimple" class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th>Employee ID</th>
+                        <th>Employee ID/Username</th>
                         <th>Full Name</th>
                         <th>Role</th>
-                        <th>Username</th>
                         <th>Status</th>
                         <th>Action</th>
                     </tr>
@@ -69,7 +68,6 @@
                             <td>{{ $user->emp_id }}</td>
                             <td>{{ $user->full_name }}</td>
                             <td>{{ $user->user_role }}</td>
-                            <td>{{$user->username}}</td>
                             <td>
                                 @if($user->user_status === 'Active')
                                     <span class="badge bg-success">Active</span>
@@ -92,16 +90,14 @@
                                 title="Edit User">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                
-                                <!-- Delete Button -->
-                                <a href="#"
-                                class="btn btn-danger btn-sm rounded-circle delete-user-btn" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#deleteUserModal"
-                                data-user-id="{{ $user->id }}"
-                                data-full-name="{{ $user->full_name }}"
-                                title="Delete User">
-                                <i class="fas fa-trash"></i>
+                                <!-- Change Password Button -->
+                                    <a href="#"
+                                    class="btn btn-warning btn-sm rounded-circle change-password-btn"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#changePasswordModal"
+                                    data-user-id="{{ $user->id }}"
+                                    title="Change Password">
+                                    <i class="fas fa-key"></i>
                                 </a>
                             </td>
                         </tr>
@@ -248,7 +244,7 @@
                     <!-- Username Field -->
                     <div class="mb-3">
                         <label for="editUsername" class="form-label">Username</label>
-                        <input type="text" class="form-control @error('username') is-invalid @enderror" id="editUsername" name="username" required>
+                        <input type="text" class="form-control @error('username') is-invalid @enderror" id="editUsername" name="username" required readonly>
                         @error('username')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -290,39 +286,40 @@
     </div>
 </div>
 
-
-
-<!-- Modal for Delete User Confirmation -->
-<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true" data-bs-backdrop="static">
+<!-- Modal for Change Password -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form id="deleteUserForm" method="POST" action="">
+            <form id="changePasswordForm" method="POST" action="">
                 @csrf
-                @method('DELETE')
+                @method('PUT')
                 <div class="modal-header">
-                    <h5 class="modal-title" id="deleteUserModalLabel">Delete User</h5>
+                    <h5 class="modal-title" id="changePasswordModalLabel">Change Password</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-        
                 <div class="modal-body">
-                    <p>Are you sure you want to delete <strong id="deleteUserName"></strong>?</p>
+                    <!-- New Password Field -->
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="newPassword" name="newPassword" required>
+                    </div>
+                    <!-- Confirm New Password Field -->
+                    <div class="mb-3">
+                        <label for="newPassword_confirmation" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="newPassword_confirmation" name="newPassword_confirmation" required>
+                    </div>
                 </div>
-        
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-                    <button type="submit" class="btn btn-danger">Yes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="changePasswordSubmitBtn">Change Password</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-
-
 <!-- Include Toggle Password Script -->
 <script type="text/javascript" src="{{ asset('javascripts/toggle_password.js') }}"></script>
-
-<!-- Scripts -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const employeeIdInput = document.getElementById('employeeId');
@@ -347,12 +344,27 @@
     });
 
     document.addEventListener('DOMContentLoaded', function () {
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            
-        })
-    
+        const changePasswordSubmitBtn = document.getElementById('changePasswordSubmitBtn');
+        const changePasswordForm = document.getElementById('changePasswordForm');
+        
+        changePasswordSubmitBtn.addEventListener('click', function () {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('newPassword_confirmation').value;
+
+            if (newPassword.length < 5 || newPassword.length > 12) {
+                window.alert('Password must be between 5 and 12 characters.');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                window.alert('Password confirmation does not match.');
+                return;
+            }
+
+            // If validation passes, submit the form
+            changePasswordForm.submit();
+        });
+
         // Edit User Modal
         var editUserModal = document.getElementById('editUserModal')
         editUserModal.addEventListener('show.bs.modal', function (event) {
@@ -376,38 +388,30 @@
             employeeIdInput.value = employeeId
             fullNameInput.value = fullName
             roleSelect.value = role
-            usernameInput =username
+            usernameInput.value = username
             statusSelect.value = status
 
             // Set the form action dynamically
             form.action = '{{ route('superadmin.edit_user', ['id' => '__id__']) }}'.replace('__id__', userId);
         })
-    })
+    });
 
-    // Delete User Modal
-    var deleteUserModal = document.getElementById('deleteUserModal')
-        deleteUserModal.addEventListener('show.bs.modal', function (event) {
-            var button = event.relatedTarget // Button that triggered the modal
-            var userId = button.getAttribute('data-user-id')
-            var fullName = button.getAttribute('data-full-name')
-            
-            // Update the modal's content.
-            var modalTitle = deleteUserModal.querySelector('.modal-title')
-            var userNameDisplay = deleteUserModal.querySelector('#deleteUserName')
-            var form = deleteUserModal.querySelector('#deleteUserForm')
-            
-            userNameDisplay.textContent = fullName
-
-            // Set the form action dynamically
-            form.action = '{{ route('superadmin.delete_user', ['id' => '__id__']) }}'.replace('__id__', userId);
-        })
-
-         // Clear form fields when modal is hidden
+    // Clear form fields when modal is hidden
     var addUserModal = document.getElementById('addUserModal');
     addUserModal.addEventListener('hidden.bs.modal', function () {
         // Reset the form
         document.getElementById('addUserForm').reset();
     });
+    // Change Password Modal
+var changePasswordModal = document.getElementById('changePasswordModal')
+changePasswordModal.addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget // Button that triggered the modal
+    var userId = button.getAttribute('data-user-id')
+
+    // Set the form action dynamically
+    var form = changePasswordModal.querySelector('#changePasswordForm')
+    form.action = '{{ route('superadmin.change_password', ['id' => '__id__']) }}'.replace('__id__', userId);
+})
 </script>
 
 @endsection

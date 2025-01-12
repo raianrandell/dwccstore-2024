@@ -47,6 +47,7 @@
                 <tr>
                     <th>Transaction Number</th>
                     <th>Item Name</th>
+                    <th>Category</th>
                     <th>Quantity Returned</th>
                     <th>Reason</th>
                     <th>Type</th>
@@ -58,6 +59,7 @@
                     <tr>
                         <td>{{ $item->transaction_no }}</td>
                         <td>{{ $item->item_name }}</td>
+                        <td>{{ $item->item->category->category_name ?? 'N/A' }}</td>
                         <td>{{ $item->return_quantity }}</td>
                         <td>{{ $item->reason }}</td>
                         <td>Replacement</td>

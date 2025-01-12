@@ -22,72 +22,83 @@ Route::POST('/superadminlogout', [SuperAdminController::class, 'logout'])->name(
 Route::GET('/user_management', [SuperAdminController::class, 'user_management'])->name('superadmin.usermanagement');
 Route::POST('/superadmin/add_user', [SuperAdminController::class, 'add_user'])->name('superadmin.add_user');
 Route::PUT('/superadmin/user/{id}/edit', [SuperAdminController::class, 'edit_user'])->name('superadmin.edit_user');
-Route::DELETE('/superadmin/user/{id}/delete', [SuperAdminController::class, 'delete_user'])->name('superadmin.delete_user');
+Route::PUT('/superadmin/user/{id}/change_password', [SuperAdminController::class, 'change_password'])->name('superadmin.change_password');
 
-// Grouping all authenticated routes
-Route::middleware(['auth'])->group(function () {
+// Inventory Routes (using 'inventoryAuth' middleware)
+Route::prefix('inventory')->group(function () {
 
-    // Inventory Routes
-    Route::GET('/inventory_dashboard', [InventoryController::class, 'inventoryDashboard'])->name('inventory.dashboard');
-    Route::GET('/inventory_stockmanagement', [InventoryController::class, 'stockManagement'])->name('inventory.stockmanagement');
-    Route::GET('/inventory_sectionmanagement', [InventoryController::class, 'sectionManagement'])->name('inventory.sectionmanagement');
-    Route::POST('/inventory_sectionmanagement', [InventoryController::class, 'addSections'])->name('inventory.addsection');
-    Route::GET('/inventory_categorymanagement', [InventoryController::class, 'categoryManagement'])->name('inventory.categorymanagement');
-    Route::POST('/inventory_categorymanagement/add', [InventoryController::class, 'addCategory'])->name('inventory.addcategory');
-    Route::POST('/inventory_categorymanagement', [InventoryController::class, 'itemsStore'])->name('inventory.itemstore');
-    Route::GET('/inventory_stockmanagement/additem', [InventoryController::class, 'addItem'])->name('inventory.additem'); 
-    Route::get('inventory/edititem/{id}', [InventoryController::class, 'editItem'])->name('inventory.edititem');
-    Route::PUT('inventory/updateitem/{id}', [InventoryController::class, 'updateItem'])->name('inventory.itemupdate');
-    Route::post('/inventory/update-stock/{id}', [InventoryController::class, 'updateStock'])->name('inventory.updateStock');
-    Route::get('/inventory/items', [InventoryController::class, 'getItems'])->name('inventory.items');
-    Route::GET('/inventory_damagetransaction', [InventoryController::class, 'damageTransaction'])->name('inventory.damagetransaction');
-    Route::POST('/damage-transaction', [InventoryController::class, 'storeDamageTransaction'])->name('inventory.storeDamageTransaction');
-    Route::get('/inventory/category-items/{categoryId}', [InventoryController::class, 'getCategoryItemsAjax'])->name('inventory.getCategoryItemsAjax');
-    Route::get('/inventory/total-item-report', [InventoryController::class, 'totalItemReport'])->name('inventory.total_item_report');
-    Route::get('/inventory/total-item-report/pdf', [InventoryController::class, 'exportTotalItemReportPdf'])->name('inventory.total_item_report.pdf');
-    Route::get('/inventory/total-item-report/export/{type}', [InventoryController::class, 'export'])->name('inventory.total_item_report_export');
-    Route::get('/inventory/total-item-report/view/{id}', [InventoryController::class, 'view'])->name('inventory.total_item_report_view');
-    Route::get('/inventory/damage-item-report/view/{id}', [InventoryController::class, 'view'])->name('inventory.damage_item_report_view');
-    Route::GET('/inventory/damage-item-report', [InventoryController::class, 'damageItemReport'])->name('inventory.damage_item_report');
-    Route::get('/inventory/damage-item-report/pdf', [InventoryController::class, 'exportDamageItemReportPdf'])->name('inventory.damage_item_report.pdf');
-    Route::get('/inventory/damage-item-report/excel', [InventoryController::class, 'exportDamageItemReportExcel'])->name('inventory.damage_item_report.excel');
-    Route::GET('/inventory/total-item-report/excel', [InventoryController::class, 'exportTotalItemReport'])->name('inventory.total_item_report.excel');
-    
-    //expired item report route
-    Route::GET('/inventory/expired-item-report', [InventoryController::class, 'expiredItemReport'])->name('inventory.expired_item_report');
-    Route::get('/inventory/expired-item-report/pdf', [InventoryController::class, 'exportExpiredItemReportPdf'])->name('inventory.expired_item_report.pdf');
-    Route::get('/inventory/expired-item-report/excel', [InventoryController::class, 'exportExpiredItemReportExcel'])->name('inventory.expired_item_report.excel');
+    // // Inventory Login Authentication (Accessible without middleware)
+    // Route::GET('/inventorylogin', [InventoryController::class, 'inventorylogin'])->name('inventory.login');
+    // Route::POST('/authenticate', [InventoryController::class, 'authenticate'])->name('inventory.authenticate');
+     
 
-    Route::post('/inventory/modify-expiration-date', [InventoryController::class, 'modifyExpirationDate'])->name('inventory.modifyExpirationDate');
+    Route::middleware(['inventoryAuth'])->group(function () {
+        // Inventory Routes (Protected by middleware)
+        Route::get('/dashboard', [InventoryController::class, 'inventoryDashboard'])->name('inventory.dashboard');
+        Route::get('/stock_management', [InventoryController::class, 'stockManagement'])->name('inventory.stockmanagement');
+        Route::get('/section_management', [InventoryController::class, 'sectionManagement'])->name('inventory.sectionmanagement');
+         Route::post('/section_management', [InventoryController::class, 'addSections'])->name('inventory.addsection');
+        Route::get('/category_management', [InventoryController::class, 'categoryManagement'])->name('inventory.categorymanagement');
+         Route::post('/category_management/add', [InventoryController::class, 'addCategory'])->name('inventory.addcategory');
+         Route::post('/category_management', [InventoryController::class, 'itemsStore'])->name('inventory.itemstore');
+         Route::get('/stockmanagement/additem', [InventoryController::class, 'addItem'])->name('inventory.additem');
+        Route::get('edititem/{id}', [InventoryController::class, 'editItem'])->name('inventory.edititem');
+        Route::put('updateitem/{id}', [InventoryController::class, 'updateItem'])->name('inventory.itemupdate');
+        Route::post('/update-stock/{id}', [InventoryController::class, 'updateStock'])->name('inventory.updateStock');
+         Route::get('/items', [InventoryController::class, 'getItems'])->name('inventory.items');
+        Route::get('/damage_transaction', [InventoryController::class, 'damageTransaction'])->name('inventory.damagetransaction');
+        Route::post('/damage-transaction', [InventoryController::class, 'storeDamageTransaction'])->name('inventory.storeDamageTransaction');
+        Route::get('/category-items/{categoryId}', [InventoryController::class, 'getCategoryItemsAjax'])->name('inventory.getCategoryItemsAjax');
+       Route::get('/total-item-report', [InventoryController::class, 'totalItemReport'])->name('inventory.total_item_report');
+       Route::get('/total-item-report/pdf', [InventoryController::class, 'exportTotalItemReportPdf'])->name('inventory.total_item_report.pdf');
+        Route::get('/total-item-report/export/{type}', [InventoryController::class, 'export'])->name('inventory.total_item_report_export');
+        Route::get('/total-item-report/view/{id}', [InventoryController::class, 'view'])->name('inventory.total_item_report_view');
+        Route::get('/damage-item-report/view/{id}', [InventoryController::class, 'view'])->name('inventory.damage_item_report_view');
+        Route::get('/damage-item-report', [InventoryController::class, 'damageItemReport'])->name('inventory.damage_item_report');
+        Route::get('/damage-item-report/pdf', [InventoryController::class, 'exportDamageItemReportPdf'])->name('inventory.damage_item_report.pdf');
+        Route::get('/damage-item-report/excel', [InventoryController::class, 'exportDamageItemReportExcel'])->name('inventory.damage_item_report.excel');
+        Route::get('/total-item-report/excel', [InventoryController::class, 'exportTotalItemReport'])->name('inventory.total_item_report.excel');
 
-    Route::GET('/user/profile', [InventoryController::class, 'profile'])->name('inventory.userprofile');
-    Route::post('/user/profile/update-password', [InventoryController::class, 'updatePassword'])->name('user.updatePassword');
-    Route::GET('/inventory_damageitems', [InventoryController::class, 'damageItems'])->name('inventory.damageitems');
-    Route::POST('/inventorylogout', [InventoryController::class, 'inventorylogout'])->name('inventory.logout');
-    Route::GET('/sections', [InventoryController::class, 'sectionManagement'])->name('sectionmanagement');
-    Route::POST('/sections/add', [InventoryController::class, 'addSections'])->name('addsection');
-    Route::get('/inventory/sections/{id}/categories', [InventoryController::class, 'getSectionCategories'])->name('inventory.sections.categories');
-    Route::get('/inventory/category/{id}/items', [InventoryController::class, 'getCategoryItems'])->name('inventory.getCategoryItems');
-    Route::GET('/inventory/low-stock-item-report', [InventoryController::class, 'lowStockItemReport'])->name('inventory.low_stock_item_report');
-    Route::get('/inventory/low-stock-item-report/pdf', [InventoryController::class, 'exportLowStockItemReportPdf'])->name('inventory.low_stock_item_report.pdf');
-    Route::get('/inventory/low-stock-item-report/excel', [InventoryController::class, 'exportLowStockItemReportExcel'])->name('inventory.low_stock_item_report.excel');
-    Route::get('/inventory/get-stock-logs/{item}', [InventoryController::class, 'getStockLogs']);
-    //Transfer Logs
-    Route::post('/inventory/transfer-item/{id}', [InventoryController::class, 'transferItem'])->name('inventory.transferItem');
-    Route::get('/inventory/get-higher-priced-items/{itemId}', [InventoryController::class, 'getSimilarItems']);
+           //expired item report route
+         Route::get('/expired-item-report', [InventoryController::class, 'expiredItemReport'])->name('inventory.expired_item_report');
+         Route::get('/expired-item-report/pdf', [InventoryController::class, 'exportExpiredItemReportPdf'])->name('inventory.expired_item_report.pdf');
+         Route::get('/expired-item-report/excel', [InventoryController::class, 'exportExpiredItemReportExcel'])->name('inventory.expired_item_report.excel');
 
-    Route::GET('/inventory_togaRenting', [InventoryController::class, 'togaRenting'])->name('inventory.toga_renting');
-    Route::post('/inventory/add-item-for-rent', [InventoryController::class, 'storeRentItem'])->name('inventory.add_item_for_rent');
-    Route::post('/items/{id}/add-stock', [InventoryController::class, 'addStock'])->name('items.addStock');
-    Route::get('/items/{id}', [InventoryController::class, 'getItem']);
-    Route::GET('inventory/services', [InventoryController::class, 'Services'])->name('inventory.services');
-    Route::post('/inventory/services', [InventoryController::class, 'storeService'])->name('inventory.store_service');  // Route to update an existing service
-    Route::put('/services/{id}', [InventoryController::class, 'updateService'])->name('inventory.update_service');
+        Route::post('/modify-expiration-date', [InventoryController::class, 'modifyExpirationDate'])->name('inventory.modifyExpirationDate');
 
-    // Route to delete a service
-    Route::delete('/services/{id}', [InventoryController::class, 'deleteService'])->name('inventory.delete_service');
+         Route::get('/user/profile', [InventoryController::class, 'profile'])->name('inventory.userprofile');
+          Route::post('/user/profile/update-password', [InventoryController::class, 'changePassword'])->name('inventory.changePassword');
+        Route::get('/damageitems', [InventoryController::class, 'damageItems'])->name('inventory.damageitems');
+        Route::get('/sections', [InventoryController::class, 'sectionManagement'])->name('sectionmanagement');
+         Route::post('/sections/add', [InventoryController::class, 'addSections'])->name('addsection');
+        Route::get('/sections/{id}/categories', [InventoryController::class, 'getSectionCategories'])->name('inventory.sections.categories');
+         Route::get('/category/{id}/items', [InventoryController::class, 'getCategoryItems'])->name('inventory.getCategoryItems');
+        Route::get('/low-stock-item-report', [InventoryController::class, 'lowStockItemReport'])->name('inventory.low_stock_item_report');
+        Route::get('/low-stock-item-report/pdf', [InventoryController::class, 'exportLowStockItemReportPdf'])->name('inventory.low_stock_item_report.pdf');
+        Route::get('/low-stock-item-report/excel', [InventoryController::class, 'exportLowStockItemReportExcel'])->name('inventory.low_stock_item_report.excel');
+       Route::get('/get-stock-logs/{item}', [InventoryController::class, 'getStockLogs']);
+      //Transfer Logs
+       Route::post('/transfer-item/{id}', [InventoryController::class, 'transferItem'])->name('inventory.transferItem');
+       Route::get('/get-higher-priced-items/{itemId}', [InventoryController::class, 'getSimilarItems']);
 
-    // Cashier Routes
+        Route::get('/togaRenting', [InventoryController::class, 'togaRenting'])->name('inventory.toga_renting');
+       Route::post('/add-item-for-rent', [InventoryController::class, 'storeRentItem'])->name('inventory.add_item_for_rent');
+        Route::post('/items/{id}/add-stock', [InventoryController::class, 'addStock'])->name('items.addStock');
+        Route::get('/items/{id}', [InventoryController::class, 'getItem']);
+        Route::GET('services', [InventoryController::class, 'Services'])->name('inventory.services');
+         Route::post('/services', [InventoryController::class, 'storeService'])->name('inventory.store_service');  // Route to update an existing service
+        Route::put('/services/{id}', [InventoryController::class, 'updateService'])->name('inventory.update_service');
+         Route::put('/damage_transactions/{id}', [InventoryController::class, 'updateDamageItem'])->name('inventory.damage_transactions_update');
+          Route::post('/logout', [InventoryController::class, 'inventorylogout'])->name('inventory.logout');
+          
+    });
+});
+
+// Inventory Routes (using 'inventoryAuth' middleware)
+Route::prefix('cashier')->group(function () {
+     
+    Route::middleware(['cashierAuth'])->group(function () {
+          // Cashier Routes
     Route::GET('/cashierdashboard', [CashierController::class, 'cashierDashboard'])->name('cashier.cashier_dashboard');
     Route::POST('/cashierlogout', [CashierController::class, 'cashierlogout'])->name('cashier.logout');
     Route::GET('/cashier_sales', [CashierController::class, 'fetchItem'])->name('cashier.sales');
@@ -106,12 +117,12 @@ Route::middleware(['auth'])->group(function () {
     Route::GET('/cashier_returns', [CashierController::class, 'returns'])->name('cashier.returns');
 
     Route::GET('/cashier_salesreport', [CashierController::class, 'sales_report'])->name('cashier.sales_report');
-    Route::get('/inventory/sales-report/pdf', [CashierController::class, 'exportSalesReportPdf'])->name('cashier.sales_report.pdf');
-    Route::get('/inventory/sales-report/excel', [CashierController::class, 'exportSalesReportExcel'])->name('cashier.sales_report.excel');
+    Route::get('/cashier/sales-report/pdf', [CashierController::class, 'exportSalesReportPdf'])->name('cashier.sales_report.pdf');
+    Route::get('/cashier/sales-report/excel', [CashierController::class, 'exportSalesReportExcel'])->name('cashier.sales_report.excel');
 
     Route::GET('/cashier_voidreport', [CashierController::class, 'void_report'])->name('cashier.void_report');
-    Route::get('/inventory/void-item-report/pdf', [CashierController::class, 'exportVoidItemReportPdf'])->name('cashier.void_item_report.pdf');
-    Route::get('/inventory/void-item-report/excel', [CashierController::class, 'exportVoidItemReportExcel'])->name('cashier.void_item_report.excel');
+    Route::get('/cashier/void-item-report/pdf', [CashierController::class, 'exportVoidItemReportPdf'])->name('cashier.void_item_report.pdf');
+    Route::get('/cashier/void-item-report/excel', [CashierController::class, 'exportVoidItemReportExcel'])->name('cashier.void_item_report.excel');
     Route::GET('/cashier_userprofile', [CashierController::class, 'userProfile'])->name('cashier.userprofile'); 
     Route::GET('/cashier/profile/edit', [CashierController::class, 'editProfile'])->name('cashier.editProfile');
     Route::PUT('/cashier/profile/edit', [CashierController::class, 'updateProfile'])->name('cashier.updateProfile');
@@ -130,34 +141,59 @@ Route::middleware(['auth'])->group(function () {
     // Services History Routes
     Route::get('/services-history', [CashierController::class, 'servicesHistory'])->name('cashier.services_history');
     Route::get('/services-history/getTransactionItems', [CashierController::class, 'getServiceTransactionItems'])->name('cashier.getServiceTransactionItems');
-    
-    // Admin Routes
-    Route::GET('/admindashboard', [AdminController::class, 'adminDashboard'])->name('admin.dashboard');
-
-    Route::GET('/admin_reports', [AdminController::class, 'reports'])->name('admin.reports');
-    Route::GET('/admin_toga&fines', [AdminController::class, 'togaFines'])->name('admin.toga_fines');
-    Route::GET('/admin_userprofile', [AdminController::class, 'userProfile'])->name('admin.userprofile');
-    Route::POST('/adminlogout', [AdminController::class, 'adminlogout'])->name('admin.logout');
-
-    Route::post('/admin/add-borrower', [AdminController::class, 'addBorrower'])->name('admin.addBorrower');
-    Route::post('/admin/returnBorrower/{id}', [AdminController::class, 'returnBorrower'])->name('admin.returnBorrower');
-    
+    Route::post('/user/profile/update-password', [CashierController::class, 'changePassword'])->name('cashier.updatePassword');
+    });
+});
 
 
-    // Accounting Routes
-    Route::GET('/accountingdashboard', [AccountingController::class, 'accountingDashboard'])->name('accounting.dashboard');
-    Route::GET('/accounting_sales', [AccountingController::class, 'salesReport'])->name('accounting.sales_report');
-    Route::GET('/accounting_returns', [AccountingController::class, 'returnReport'])->name('accounting.returned_items');
-    Route::GET('/accounting_voids', [AccountingController::class, 'void_report'])->name('accounting.void_report');
 
-    Route::POST('/accountinglogout', [AccountingController::class, 'accountinglogout'])->name('accounting.logout');
-    Route::GET('/accounting_userprofile', [AccountingController::class, 'userprofile'])->name('accounting.userprofile');
 
-    Route::GET('/chargetransaction', [AccountingController::class, 'chargeTransaction'])->name('accounting.chargeTransaction');
-    Route::get('/get-transaction-details/{id}', [AccountingController::class, 'getTransactionDetails']);
-    Route::post('/update-transaction-status/{id}', [AccountingController::class, 'updateTransactionStatus']);
+// Inventory Routes (using 'inventoryAuth' middleware)
+Route::prefix('admin')->group(function () {
+     
+    Route::middleware(['adminAuth'])->group(function () {
+        // Admin Routes
+        Route::GET('/admindashboard', [AdminController::class, 'adminDashboard'])->name('admin.dashboard');
 
-    Route::GET('/accounting_damageitems', [AccountingController::class, 'damageitems'])->name('accounting.damage_items');
+        Route::GET('/admin_reports', [AdminController::class, 'reports'])->name('admin.reports');
+        Route::GET('/admin_toga&fines', [AdminController::class, 'togaFines'])->name('admin.toga_fines');
+        Route::GET('/admin_userprofile', [AdminController::class, 'userProfile'])->name('admin.userprofile');
+
+        Route::post('/admin/add-borrower', [AdminController::class, 'addBorrower'])->name('admin.addBorrower');
+        Route::post('/admin/returnBorrower/{id}', [AdminController::class, 'returnBorrower'])->name('admin.returnBorrower');
+        Route::POST('/adminlogout', [AdminController::class, 'adminlogout'])->name('admin.logout');
+        Route::post('/user/profile/update-password', [AdminController::class, 'changePassword'])->name('admin.changePassword');
+    });
+});
+
+// Inventory Routes (using 'inventoryAuth' middleware)
+Route::prefix('accounting')->group(function () {
+     
+    Route::middleware(['accountingAuth'])->group(function () {
+        // Accounting Routes
+        Route::GET('/accountingdashboard', [AccountingController::class, 'accountingDashboard'])->name('accounting.dashboard');
+        Route::GET('/accounting_sales', [AccountingController::class, 'salesReport'])->name('accounting.sales_report');
+        Route::GET('/accounting_returns', [AccountingController::class, 'returnReport'])->name('accounting.returned_items');
+        Route::GET('/accounting_voids', [AccountingController::class, 'void_report'])->name('accounting.void_report');
+
+        Route::POST('/accountinglogout', [AccountingController::class, 'accountinglogout'])->name('accounting.logout');
+        Route::GET('/accounting_userprofile', [AccountingController::class, 'userProfile'])->name('accounting.userprofile');
+
+        Route::GET('/chargetransaction', [AccountingController::class, 'chargeTransaction'])->name('accounting.chargeTransaction');
+        Route::get('/get-transaction-details/{id}', [AccountingController::class, 'getTransactionDetails']);
+        Route::post('/update-transaction-status/{id}', [AccountingController::class, 'updateTransactionStatus']);
+
+        Route::GET('/accounting_damageitems', [AccountingController::class, 'damageitems'])->name('accounting.damage_items');
+        Route::post('/user/profile/update-password', [AccountingController::class, 'changePassword'])->name('accounting.changePassword');
+        Route::get('/accounting/sales-report/pdf', [AccountingController::class, 'exportSalesReportPdf'])->name('accounting.sales_report.pdf');
+        Route::get('/accounting/sales-report/excel', [AccountingController::class, 'exportSalesReportExcel'])->name('accounting.sales_report.excel');
+    });
+});
+
+
+// Cashier, Admin, Accounting Routes (using 'auth' middleware)
+Route::middleware(['auth'])->group(function () {
+ 
 });
 
 // Inventory Login Authentication
@@ -171,7 +207,6 @@ Route::POST('/cashierlogin', [CashierController::class, 'authenticate'])->name('
 // Admin Login Authentication
 Route::GET('/adminlogin', [AdminController::class, 'adminlogin'])->name('admin_login');
 Route::POST('/adminlogin', [AdminController::class, 'authenticate'])->name('admin.authenticate');
-
 
 // Accounting Login Authentication
 Route::GET('/accountinglogin', [AccountingController::class, 'accountinglogin'])->name('accounting_login');

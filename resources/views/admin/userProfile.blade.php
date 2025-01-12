@@ -1,10 +1,10 @@
-@extends('layout.inventory')
+@extends('layout.admin')
 
 @section('title', 'User Profile')
 
 @section('content')
 <ol class="breadcrumb mb-3 mt-5">
-    <li class="breadcrumb-item"><a href="{{ route('inventory.dashboard') }}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
     <li class="breadcrumb-item active">User Profile</li>
 </ol>
 <div class="scale-wrapper" style="transform: scale(0.9); transform-origin: top left; width: 111.11%;">
@@ -47,7 +47,7 @@
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     @endif
-                    <form action="{{ route('inventory.changePassword') }}" method="POST">
+                    <form action="{{ route('admin.changePassword') }}" method="POST">
                         @csrf
                         <div class="mb-3">
                             <label for="current_password" class="form-label">Current Password</label>

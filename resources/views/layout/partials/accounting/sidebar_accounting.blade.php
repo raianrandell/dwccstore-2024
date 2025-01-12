@@ -2,10 +2,12 @@
     <div class="sb-sidenav-menu">
         <div class="nav"><br>
 
+            <!-- Charge Transaction -->
             <a class="nav-link text-white {{ request()->routeIs('accounting.chargeTransaction') ? 'active' : '' }}" href="{{ route('accounting.chargeTransaction') }}">
                 <div class="sb-nav-link-icon text-white"><i class="fas fa-credit-card"></i></div>
                 Charge Transaction
             </a>
+
             <!-- Reports Dropdown -->
             <a class="nav-link collapsed text-white 
                 {{ request()->routeIs('accounting.sales_report') || request()->routeIs('accounting.damage_items') || request()->routeIs('accounting.returned_items') || request()->routeIs('accounting.void_report') ? 'active' : '' }}" 
@@ -17,38 +19,44 @@
                 Reports
                 <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down text-white"></i></div>
             </a>
-            <div class="collapse {{ request()->routeIs('accounting.sales_report') || request()->routeIs('accounting.damage_items') || request()->routeIs('accounting.returned_items') || request()->routeIs('accounting.void_report')  ? 'show' : '' }}" id="collapseReports" aria-labelledby="headingReports" data-bs-parent="#sidenavAccordion">
+            <div class="collapse {{ request()->routeIs('accounting.sales_report') || request()->routeIs('accounting.damage_items') || request()->routeIs('accounting.returned_items') || request()->routeIs('accounting.void_report') ? 'show' : '' }}" id="collapseReports" aria-labelledby="headingReports" data-bs-parent="#sidenavAccordion">
                 <nav class="sb-sidenav-menu-nested">
+                    <!-- Sales Report -->
                     <a class="nav-link text-white {{ request()->routeIs('accounting.sales_report') ? 'active' : '' }}" href="{{ route('accounting.sales_report') }}">
-                        <div class="sb-nav-link-icon text-white"><i class="fa-solid fa-money-bill-1-wave"></i></div>
-                        Sales Report
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-money-bill-wave"></i></div>
+                        Sales
                     </a>
+                    <!-- Returned Items -->
                     <a class="nav-link text-white {{ request()->routeIs('accounting.returned_items') ? 'active' : '' }}" href="{{ route('accounting.returned_items') }}">
-                        <div class="sb-nav-link-icon text-white"><i class="fa-solid fa-triangle-exclamation"></i></i></div>
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-undo-alt"></i></div>
                         Returned Items
                     </a>
+                    <!-- Void Logs -->
                     <a class="nav-link text-white {{ request()->routeIs('accounting.void_report') ? 'active' : '' }}" href="{{ route('accounting.void_report') }}">
-                        <div class="sb-nav-link-icon text-white"><i class="fa-solid fa-triangle-exclamation"></i></i></div>
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-ban"></i></div>
                         Void Logs 
                     </a>
+                    <!-- Damage Items -->
                     <a class="nav-link text-white {{ request()->routeIs('accounting.damage_items') ? 'active' : '' }}" href="{{ route('accounting.damage_items') }}">
-                        <div class="sb-nav-link-icon text-white"><i class="fa-solid fa-triangle-exclamation"></i></i></div>
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-exclamation-triangle"></i></div>
                         Damage Items
                     </a>
                 </nav>
             </div>
             
+            <!-- User Profile -->
             <a class="nav-link text-white {{ request()->routeIs('accounting.userprofile') ? 'active' : '' }}" href="{{ route('accounting.userprofile') }}">
                 <div class="sb-nav-link-icon text-white"><i class="fas fa-user"></i></div>
                 User Profile
             </a>
-            <!-- Other inventory links -->
         </div>
     </div>
+
+    <!-- Footer -->
     <div class="sb-sidenav-footer bg-transparent text-white">
         <div class="small">Logged in as:</div>
-        @auth
-            {{ Auth::user()->full_name }}
+        @auth('accounting')
+            {{ Auth::guard('accounting')->user()->full_name }}
         @else
             Guest
         @endauth

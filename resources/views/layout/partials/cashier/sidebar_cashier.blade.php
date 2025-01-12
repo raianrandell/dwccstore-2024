@@ -80,12 +80,12 @@
             <div class="collapse {{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') ? 'show' : '' }}" id="collapseReports" aria-labelledby="headingReports" data-bs-parent="#sidenavAccordion">
                 <nav class="sb-sidenav-menu-nested">
                     <a class="nav-link text-white {{ request()->routeIs('cashier.sales_report') ? 'active' : '' }}" href="{{ route('cashier.sales_report') }}">
-                        <div class="sb-nav-link-icon text-white"><i class="fas fa-cash-register"></i></div>
-                        Sales Report
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-money-bill-wave"></i></div>
+                        Sales 
                     </a>
                     <a class="nav-link text-white {{ request()->routeIs('cashier.void_report') ? 'active' : '' }}" href="{{ route('cashier.void_report') }}">
                         <div class="sb-nav-link-icon text-white"><i class="fas fa-history"></i></div>
-                        Void Logs Report
+                        Void Logs
                     </a>
                     <a class="nav-link text-white {{ request()->routeIs('cashier.return_item_report') ? 'active' : '' }}" href="{{ route('cashier.return_item_report') }}">
                         <div class="sb-nav-link-icon text-white"><i class="fas fa-undo-alt"></i></div>
@@ -103,8 +103,8 @@
     </div>
     <div class="sb-sidenav-footer bg-transparent text-white">
         <div class="small">Logged in as:</div>
-        @auth
-            {{ Auth::user()->full_name }}
+        @auth('cashier')
+            {{ Auth::guard('cashier')->user()->full_name }}
         @else
             Guest
         @endauth

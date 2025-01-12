@@ -69,25 +69,27 @@
                                                 $item->expiration_date &&
                                                 \Carbon\Carbon::parse($item->expiration_date)->isPast();
                                         @endphp
-
+                        
                                         @if ($isExpired)
                                             @continue <!-- Skip this iteration if the item is expired -->
                                         @endif
-
+                        
                                         <option value="{{ $item->id }}" {{ $item->qtyInStock === 0 ? 'disabled' : '' }}>
-                                            {{ $item->item_name }} - {{ $item->unit_of_measurement }} (Stock:
-                                            {{ $item->qtyInStock }})
+                                            {{ $item->item_name }} - {{ $item->unit_of_measurement }}
+                                            (Stock: {{ $item->qtyInStock }})
+                                            @if ($item->expiration_date)
+                                                - Exp: {{ \Carbon\Carbon::parse($item->expiration_date)->format('m/d/Y') }}
+                                            @endif
                                         </option>
                                     @endforeach
                                 </select>
-
-                                &nbsp;&nbsp;<button type="button" class="btn btn-outline-success" id="addItemButton"
-                                    title="Add Item">
+                        
+                                &nbsp;&nbsp;<button type="button" class="btn btn-outline-success" id="addItemButton" title="Add Item">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
                         </div>
-
+                        
                         <!-- Item List Table -->
                         <div class="card mb-4 shadow-sm">
                             <div class="card-header">
@@ -530,7 +532,7 @@
 
                 // Get the full name of the logged-in user
                 const voidedByFullName =
-                    '{{ Auth::user()->full_name }}'; // Get the full name of the logged-in user
+                    '{{ Auth::guard('cashier')->user()->full_name }}'; // Get the full name of the logged-in user
 
                 // Make AJAX call to save voided item
                 $.ajax({
@@ -542,7 +544,7 @@
                             .getTime(), // Use your transaction number logic here
                         item_name: itemName,
                         price: price,
-                        user_id: '{{ Auth::id() }}', // Get the current logged-in user ID
+                        user_id: '{{ Auth::guard('cashier')->user()->id }}', // Get the current logged-in user ID
                         voided_by: voidedByFullName // Include the full name of the user
                     },
                     success: function(response) {
@@ -883,7 +885,7 @@
                             const transactionNo = response.transaction_no ||
                                 'N/A'; // Default to 'N/A' if undefined
                             const cashierName =
-                                '{{ Auth::user()->full_name }}'; // Assuming this is the correct way to get the cashier's name
+                                '{{ Auth::guard('cashier')->user()->full_name; }}'; // Assuming this is the correct way to get the cashier's name
 
                             // Trigger invoice generation and printing
                             generateSalesInvoice({

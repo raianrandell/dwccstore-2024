@@ -67,8 +67,8 @@
     </div>
     <div class="sb-sidenav-footer bg-transparent text-white">
         <div class="small">Logged in as:</div>
-        @auth
-            {{ Auth::user()->full_name }}
+        @auth('inventory')
+            {{ Auth::guard('inventory')->user()->full_name }}
         @else
             Guest
         @endauth

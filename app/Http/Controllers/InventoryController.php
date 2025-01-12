@@ -19,6 +19,7 @@ use PDF;
 use App\Exports\TotalItemReportExport;
 use App\Exports\DamageItemReportExport;
 use App\Exports\ExpiredItemReportExport;
+use App\Exports\LowStockItemReportExport;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\InventoryLog;
 use App\Models\ExpirationDateChange;
@@ -46,8 +47,8 @@ class InventoryController extends Controller
         $categories = Category::all();
     
         // Get the authenticated user ID and full name
-        $userId = Auth::id();
-        $userName = Auth::user()->full_name; // Assuming `full_name` is a field in the User model
+        $userId = Auth::guard('inventory')->user()->id;
+        $userName = Auth::guard('inventory')->user()->full_name;
     
         // Log the success message if it exists
         if (Session::has('success')) {
@@ -98,8 +99,11 @@ class InventoryController extends Controller
             return back()->with('fail', 'This account is inactive, please contact the administrator.');
         }
 
-        if (Auth::attempt($credentials)) {
-            return redirect()->route('inventory.dashboard')->with('success', 'Login Successful');
+        if (Auth::guard('inventory')->attempt($credentials)) {
+            return redirect()->route('inventory.dashboard')->with([
+                'success' => 'Login Successful',
+                'full_name' => $user->full_name
+            ]);
         }
 
         return back()->with('fail', 'The password is incorrect.');
@@ -107,6 +111,7 @@ class InventoryController extends Controller
 
     public function inventoryDashboard()
     {
+        $fullName = session('full_name'); // Get from session
         $totalItems = Item::count();
         $totalCategories = Category::count();
         $lowStockItems = Item::where('status', 'Low Stock')->where('qtyInStock', '>', 0)->count();
@@ -176,8 +181,8 @@ class InventoryController extends Controller
         InventoryLog::create([
             'message' => 'Item updated: ' . $item->item_name,
             'type' => 'update',
-            'user_id' => Auth::id(),
-            'manage_by' => Auth::user()->full_name,
+            'user_id' => Auth::guard('inventory')->user()->id,
+            'manage_by' => Auth::guard('inventory')->user()->full_name,
         ]);
     
         // Redirect back with a success message
@@ -275,7 +280,7 @@ class InventoryController extends Controller
 
     public function addItem()
     {
-        $categories = Category::all(); // Assuming you have a Category model to fetch categories
+        $categories = Category::orderBy('category_name', 'ASC')->get();
         return view('inventory.add_item', compact('categories'));
     }
     public function itemsStore(Request $request)
@@ -369,7 +374,7 @@ class InventoryController extends Controller
     
         // Update the item expiration date if provided
         if (!empty($validatedData['new_expiration_date_update'])) {
-            $modifiedBy = Auth::user()->full_name;
+            $modifiedBy = Auth::guard('inventory')->user()->full_name;
             $itemName = $item->item_name;
     
             // Save the old and new expiration date in a new table
@@ -386,7 +391,7 @@ class InventoryController extends Controller
         }
     
         // Get the authenticated user
-        $user = Auth::user();
+        $user = Auth::guard('inventory')->user()->full_name;
     
         if ($validatedData['price_update'] === 'yes') {
             // Create a new item entry with updated base price, selling price, and barcode
@@ -425,7 +430,7 @@ class InventoryController extends Controller
                 'old_expiration_date' => $item->expiration_date,
                 'new_expiration_date' => $validatedData['new_expiration_date'] ?? $item->expiration_date,
                 'user_id' => $user ? $user->id : null,
-                'update_by' => $user ? $user->full_name : 'Unknown',
+                'update_by' => Auth::guard('inventory')->user()->full_name,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -464,7 +469,7 @@ class InventoryController extends Controller
             StockLog::create([
                 'item_id' => $item->id,
                 'quantity_change' => $quantityChange,
-                'update_by' => $user->full_name,
+                'update_by' => Auth::guard('inventory')->user()->full_name,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -548,10 +553,37 @@ public function getCategoryItems($categoryId)
                   ->orWhere('expiration_date', '>', Carbon::now());
         })
         ->where('qtyInStock', '>', 0)
-        ->orderBy('item_name', 'asc')
+        ->orderBy('item_name', 'ASC')
         ->get();
     
         return view('inventory.damage_transaction', compact('damageTransactions', 'items'));
+    }
+        public function updateDamageItem(Request $request, $id)
+    {
+        $request->validate([
+            'quantity' => 'required|integer',
+            'operation' => 'required|in:add,deduct',
+        ]);
+
+        $transaction = DamageTransaction::findOrFail($id);
+        $item = Item::findOrFail($transaction->item_id);
+
+        if ($request->operation == 'add') {
+            // Validate if adding quantity exceeds available stock
+            if ($transaction->quantity + $request->quantity > $item->qtyInStock) {
+                return redirect()->back()->with('danger', 'Damage quantity cannot exceed available stock.');
+            }
+            $transaction->quantity += $request->quantity;
+            $item->qtyInStock -= $request->quantity;
+        } else {
+            $transaction->quantity -= $request->quantity;
+            $item->qtyInStock += $request->quantity;
+        }
+
+        $transaction->save();
+        $item->save();
+
+        return redirect()->back()->with('success', 'Quantity updated successfully.');
     }
     
 
@@ -609,7 +641,7 @@ public function getCategoryItems($categoryId)
             return response()->json(['message' => 'Category not found.'], 404);
         }
     
-        $items = $category->items()->orderBy('item_name', 'asc')->get(['id', 'item_name']);
+        $items = $category->items()->orderBy('item_name', 'ASC')->get(['id', 'item_name']);
 
         $items = Item::where('cat_id', $categoryId)
                 ->where(function($query) {
@@ -622,61 +654,196 @@ public function getCategoryItems($categoryId)
         return response()->json(['items' => $items]);
     }
 
-    public function totalItemReport()
+    public function totalItemReport(Request $request)
     {
         // Clear existing data in the total_item_report table
         TotalItemReport::truncate();
+    
+        // Fetch categories and items for the dropdowns
+        $categories = Category::orderBy('category_name', 'ASC')->get();
+        $itemsForDropdown = Item::orderBy('item_name', 'ASC')->get();
+        $units = Item::select('unit_of_measurement')->distinct()->pluck('unit_of_measurement');
 
-        // Fetch, map, and sort item data to include necessary fields, including date
-        $items = Item::with('category')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'item_id' => $item->id,
-                    'item_name' => $item->item_name,
-                    'cat_id' => $item->cat_id,
-                    'category_name' => $item->category->category_name ?? 'No Category',
-                    'quantity' => $item->qtyInStock,
-                    'unit' => $item->unit_of_measurement,
-                    'base_price' => $item->base_price,
-                    'selling_price' => $item->selling_price,
-                    'created_at' => $item->created_at,
-                    'updated_at' => now(),
-                ];
-            })
-            ->sortBy(['category_name', 'item_name']) // Sort by category name, then item name
-            ->values(); // Reset keys after sorting
-
-        // Insert mapped data into the total_item_report table using the model
+    
+        // Initialize the query with relationships and order by 'created_at'
+        $itemsQuery = Item::with('category')->orderBy('created_at', 'ASC'); // You can use 'asc' for ascending order
+    
+        // Apply filters based on request parameters
+        if ($request->filled('start_date')) {
+            $itemsQuery->where('created_at', '>=', Carbon::parse($request->start_date)->startOfDay());
+        }
+        if ($request->filled('end_date')) {
+            $itemsQuery->where('created_at', '<=', Carbon::parse($request->end_date)->endOfDay());
+        }
+        if ($request->filled('item_name')) {
+            $itemsQuery->where('item_name', $request->item_name);
+        }
+        if ($request->filled('category')) {
+            $itemsQuery->where('cat_id', $request->category);
+        }
+        if ($request->filled('unit')) {
+            $itemsQuery->where('unit_of_measurement', $request->unit);
+        }
+        
+    
+        // Execute the query and map the results
+        $items = $itemsQuery->get()->map(function ($item) {
+            return [
+                'item_id' => $item->id,
+                'item_name' => $item->item_name,
+                'cat_id' => $item->cat_id,
+                'category_name' => $item->category->category_name ?? 'No Category',
+                'quantity' => $item->qtyInStock,
+                'unit' => $item->unit_of_measurement,
+                'base_price' => $item->base_price,
+                'selling_price' => $item->selling_price,
+                'created_at' => $item->created_at,
+                'updated_at' => now(),
+            ];
+        });
+    
+        // Insert mapped data into the total_item_report table
         TotalItemReport::insert($items->toArray());
-
-        return view('inventory.total_items_report', compact('items'));
+    
+        // Pass the sorted items to the view
+        return view('inventory.total_items_report', compact('items', 'categories', 'itemsForDropdown','units'));
     }
-
-    public function exportTotalItemReportPdf()
+    
+    
+    public function exportTotalItemReportPdf(Request $request)
     {
-        // Fetch items with their category names
-        $items = Item::with('category')->get()->groupBy('category.category_name');
-        $currentDate = Carbon::now()->format('F j, Y');
-        // Get the full name of the authenticated user
-        $userFullName = Auth::user()->full_name;
+        // Retrieve filter inputs
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $itemName = $request->input('item_name');
+        $categoryId = $request->input('category');
+        $unit = $request->input('unit');
+    
+        // Initialize the query with category relationship
+        $itemsQuery = Item::with('category');
+    
+        // Apply Start Date filter
+        if ($startDate) {
+            $itemsQuery->where('created_at', '>=', $startDate);
+        }
+    
+        // Apply End Date filter
+        if ($endDate) {
+            $itemsQuery->where('created_at', '<=', $endDate);
+        }
+    
+        // Apply Item Name filter
+        if ($itemName) {
+            $itemsQuery->where('item_name', $itemName);
+        }
+    
+        // Apply Category filter
+        if ($categoryId) {
+            $itemsQuery->where('cat_id', $categoryId);
+        }
+        if ($request->filled('unit')) {
+            $itemsQuery->where('unit_of_measurement', $request->unit);
+        }
+        
+    
+        // Fetch and group items by category name
+        $items = $itemsQuery->get()->groupBy('category.category_name');
+    
+        // Retrieve category name for display, if a category filter is applied
+        $categoryName = $categoryId ? Category::find($categoryId)->category_name : null;
+    
+        $units = Item::select('unit_of_measurement')->distinct()->pluck('unit_of_measurement');
 
-        // Pass the items and date to the view
-        $pdf = Pdf::loadView('inventory.total_items_report_pdf', compact('items', 'currentDate', 'userFullName'))
-            ->setPaper('A4', 'portrait')
-            ->setOptions(['isHtml5ParserEnabled' => true, 'isPhpEnabled' => true]);
-
+        // Get the authenticated user's full name
+        $userFullName = Auth::guard('inventory')->user()->full_name;
+    
+        // Get the current date and time
+        $currentDate = Carbon::now()->format('m-d-Y h:i:s a');
+    
+        // Generate the PDF using the filtered data
+        $pdf = PDF::loadView('inventory.total_items_report_pdf', [
+            'items' => $items,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'itemName' => $itemName,
+            'unit' => $unit,
+            'categoryName' => $categoryName,
+            'currentDate' => $currentDate,
+            'userFullName' => $userFullName,
+        ])
+        ->setPaper('A4', 'portrait')
+        ->setOptions(['isHtml5ParserEnabled' => true, 'isPhpEnabled' => true]);
+    
+        // Stream the PDF back to the browser
         return $pdf->stream('Total_Items_Report.pdf');
     }
 
     public function exportTotalItemReport(Request $request)
     {
-        /// Retrieve data using the TotalItemReport model
-        $items = TotalItemReport::select('item_name', 'category_name', 'quantity', 'unit', 'base_price', 'selling_price', 'total_base_price', 'total_selling_price')->get();
-
-        // Return the export
-        return Excel::download(new TotalItemReportExport($items), 'total_item_report.xlsx');
+        // Fetch filters from the request
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $itemName = $request->input('item_name');
+        $categoryId = $request->input('category');
+        $unit = $request->input('unit');
+    
+        // Initialize the query with category relationship
+        $itemsQuery = Item::with('category');
+    
+        // Apply Start Date filter
+        if ($startDate) {
+            $itemsQuery->where('created_at', '>=', Carbon::parse($startDate)->startOfDay());
+        }
+    
+        // Apply End Date filter
+        if ($endDate) {
+            $itemsQuery->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
+        }
+    
+        // Apply Item Name filter
+        if ($itemName) {
+            $itemsQuery->where('item_name', $itemName);
+        }
+    
+        // Apply Category filter
+        if ($categoryId) {
+            $itemsQuery->where('cat_id', $categoryId);
+        }
+    
+        // Apply Unit filter
+        if ($unit) {
+            $itemsQuery->where('unit_of_measurement', $unit);
+        }
+    
+        // Fetch and group items by category name
+        $items = $itemsQuery->get()->groupBy('category.category_name');
+    
+        // Retrieve category name for display, if a category filter is applied
+        $categoryName = $categoryId ? Category::find($categoryId)->category_name : 'All Categories';
+    
+        // Prepare filters information
+        $filters = [
+            'date_range' => ($startDate ? Carbon::parse($startDate)->format('m-d-Y') : 'All Dates') . ' - ' . ($endDate ? Carbon::parse($endDate)->format('m-d-Y') : 'All Dates'),
+            'item_name' => $itemName ?? 'All Items',
+            'category_name' => $categoryName,
+            'unit' => $unit ?? 'All Units',
+        ];
+    
+        // Get the authenticated user's full name
+        $userFullName = Auth::guard('inventory')->user()->full_name;
+    
+        // Get the current date and time
+        $currentDate = Carbon::now()->format('m-d-Y h:i:s a');
+    
+        $formattedDate = Carbon::now()->format('F d, Y');
+    
+        // Create an instance of the export class
+        $export = new TotalItemReportExport($request, $items, $filters, $userFullName, $currentDate, $formattedDate);
+    
+        // Generate and download the Excel file
+        return Excel::download($export, 'Total_Items_Report_' . Carbon::now()->format('m_d_Y') . '.xlsx');
     }
+    
 
     //for the damage item report
     public function damageItemReport(Request $request)
@@ -746,15 +913,15 @@ public function getCategoryItems($categoryId)
         $damageItems = $query->get();
     
         // Get the full name of the authenticated user
-        $userFullName = Auth::user()->full_name;
+        $userFullName = Auth::guard('inventory')->user()->full_name;
     
         // Generate the PDF with the filtered damage items
         $pdf = PDF::loadView('inventory.damage_items_report_pdf', compact('damageItems', 'startDate', 'endDate', 'itemName', 'category', 'userFullName'))
             ->setPaper('A4', 'portrait')
             ->setOptions(['isHtml5ParserEnabled' => true, 'isPhpEnabled' => true]);
     
-        // Download the generated PDF
-        return $pdf->download('dwcc_college_bookstore_damage_item_report.pdf');
+        // View the generated PDF
+        return $pdf->stream('dwcc_college_bookstore_damage_item_report.pdf');
     }
     
 
@@ -773,11 +940,11 @@ public function getCategoryItems($categoryId)
     public function profile()
     {
         // Get the authenticated user
-        $user = Auth::user();
+        $user = Auth::guard('inventory')->user();
         return view('inventory.user_profile', compact('user'));
     }
 
-    public function updatePassword(Request $request)
+    public function changePassword(Request $request)
     {
         // Validate the request
         $request->validate([
@@ -785,7 +952,7 @@ public function getCategoryItems($categoryId)
             'new_password' => 'required|min:8|confirmed',
         ]);
 
-        $user = Auth::user();
+        $user = Auth::guard('inventory')->user();
 
         // Check if the current password is correct
         if (!Hash::check($request->current_password, $user->password)) {
@@ -796,7 +963,7 @@ public function getCategoryItems($categoryId)
         $user->password = Hash::make($request->new_password);
         $user->save();
 
-        return redirect()->route('inventory.userprofile')->with('success', 'Password updated successfully.');
+        return redirect()->route('inventory.login')->with('success', 'Password updated successfully. Please re-login.');
     }
 
     public function lowStockItemReport(Request $request)
@@ -810,11 +977,14 @@ public function getCategoryItems($categoryId)
         $query = Item::whereColumn('qtyInStock', '<=', 'low_stock_limit');
 
         // Check if start and end dates are the same
-        if ($startDate && $endDate && $startDate === $endDate) {
-            $query->whereDate('created_at', $startDate);
-        } elseif ($startDate && $endDate) {
-            $query->whereBetween('created_at', [$startDate, $endDate]);
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [$startDate, Carbon::parse($endDate)->endOfDay()]);
+        } elseif ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        } elseif ($endDate) {
+            $query->whereDate('created_at', '<=', Carbon::parse($endDate)->endOfDay());
         }
+        
 
         if ($itemName) {
             $query->where('item_name', $itemName);
@@ -828,8 +998,8 @@ public function getCategoryItems($categoryId)
         $lowStockItems = $query->get();
 
         // Retrieve all categories and item names for filters
-        $categories = Category::all();
-        $itemNames = Item::select('item_name')->distinct()->get();
+        $categories = Category::orderBy('category_name', 'ASC')->get();
+        $itemNames = Item::select('item_name')->distinct()->orderBy('item_name')->get();
 
         // Return the view with data
         return view('inventory.low_stock_items', compact('lowStockItems', 'categories', 'itemNames'));
@@ -841,6 +1011,7 @@ public function getCategoryItems($categoryId)
         $endDate = $request->input('end_date');
         $itemName = $request->input('item_name');
         $category = $request->input('category');
+        $categoryName = 'All Categories'; // Default value
     
         // Build query for low stock items
         $query = Item::whereColumn('qtyInStock', '<=', 'low_stock_limit');
@@ -857,18 +1028,35 @@ public function getCategoryItems($categoryId)
     
         if ($category) {
             $query->where('cat_id', $category);
+            // Retrieve the category name based on the category ID
+            $categoryName = Category::where('id', $category)->value('category_name');
         }
-        
+    
         // Retrieve low stock items
         $lowStockItems = $query->get();
         // Get the full name of the authenticated user
-        $userFullName = Auth::user()->full_name;
+        $userFullName = Auth::guard('inventory')->user()->full_name;
     
         // Load the PDF view
-        $pdf = Pdf::loadView('inventory.low_stock_items_report_pdf', compact('lowStockItems', 'startDate', 'endDate', 'itemName', 'category', 'userFullName'));
+        $pdf = Pdf::loadView('inventory.low_stock_items_report_pdf', compact('lowStockItems', 'startDate', 'endDate', 'itemName', 'categoryName', 'userFullName'));
     
-        // Download the generated PDF
-        return $pdf->download('low_stock_item_report.pdf');
+        // View the generated PDF
+        return $pdf->stream('low_stock_item_report.pdf');
+    }
+
+    public function exportLowStockItemReportExcel(Request $request)
+    {
+        // Get filter parameters from the request
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $itemName = $request->input('item_name');
+        $category = $request->input('category');
+
+        // Pass the filters to the export class
+        $export = new LowStockItemReportExport($startDate, $endDate, $itemName, $category);
+
+        // Generate the Excel file for download
+        return Excel::download($export, 'low_stock_item_report.xlsx');
     }
 
     public function transferItem(Request $request)
@@ -957,7 +1145,12 @@ public function getCategoryItems($categoryId)
     
         // Filter by date range
         if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('expiration_date', [$request->start_date, $request->end_date]);
+            $startDate = Carbon::parse($request->start_date); // Remove startOfDay()
+            $endDate = Carbon::parse($request->end_date);   // Remove endOfDay()
+    
+            // Use whereDate to compare only the date part
+            $query->whereDate('expiration_date', '>=', $startDate)
+                  ->whereDate('expiration_date', '<=', $endDate);
         }
     
         // Filter by item name
@@ -970,20 +1163,20 @@ public function getCategoryItems($categoryId)
             $query->where('category', $request->category);
         }
     
-        // Step 4: Retrieve filtered expired items
-        $expiredItemsFromDB = $query->get();
+        // Step 4: Retrieve filtered expired items and order by item_name and category
+        $expiredItemsFromDB = $query->orderBy('item_name')->orderBy('category')->get();
     
-        // Fetch unique categories and item names for dropdown filters
-        $categories = ExpiredItem::select('category')->distinct()->pluck('category');
-        $itemNames = ExpiredItem::select('item_name')->distinct()->pluck('item_name');
+        // Fetch unique categories and item names for dropdown filters and sort them
+        $categories = ExpiredItem::select('category')->distinct()->orderBy('category')->pluck('category');
+        $itemNames = ExpiredItem::select('item_name')->distinct()->orderBy('item_name')->pluck('item_name');
     
         // Step 5: Pass data to the view
         return view('inventory.expired_item_report', compact('expiredItemsFromDB', 'categories', 'itemNames'));
     }
     public function exportExpiredItemReportPdf(Request $request)
     {
-        // Step 1: Filter items from the `items` table based on filters
-        $query = Item::where('expiration_date', '<', now());
+           // Step 1: Filter items from the `expired_items` table based on filters
+        $query = ExpiredItem::query();
     
         // Collect filter values
         $startDate = $request->start_date;
@@ -991,26 +1184,26 @@ public function getCategoryItems($categoryId)
         $itemName = $request->item_name;
         $category = $request->category;
     
-        // Apply filters
+         // Apply filters
         if ($startDate && $endDate) {
+            $startDate = Carbon::parse($startDate)->startOfDay();
+            $endDate = Carbon::parse($endDate)->endOfDay();
             $query->whereBetween('expiration_date', [$startDate, $endDate]);
         }
     
         if ($itemName) {
-            $query->where('item_name', 'like', '%' . $itemName . '%');
+           $query->where('item_name', 'like', '%' . $itemName . '%');
         }
     
         if ($category) {
-            $query->whereHas('category', function ($q) use ($category) {
-                $q->where('category_name', $category);
-            });
+           $query->where('category',$category);
         }
-    
-        // Fetch the filtered items
+
+         // Fetch the filtered items
         $expiredItems = $query->get();
     
         // Get the user's full name
-        $userFullName = Auth::user()->full_name;
+        $userFullName = Auth::guard('inventory')->user()->full_name;
     
         // Step 2: Generate the PDF using the filtered data and filters
         $pdf = Pdf::loadView('inventory.expired_item_report_pdf', compact(
@@ -1022,8 +1215,8 @@ public function getCategoryItems($categoryId)
             'category'
         ));
     
-        // Step 3: Return the PDF for download
-        return $pdf->download('expired_items_report.pdf');
+        // Step 3: Return the PDF for View
+        return $pdf->stream('expired_items_report.pdf');
     }
 
     public function exportExpiredItemReportExcel(Request $request)
@@ -1076,14 +1269,14 @@ public function getCategoryItems($categoryId)
             'qty_in_stock' => $oldQtyInStock,
             'quantity_added' => $request->quantity_added,
             'new_expiration_date' => $request->new_expiration_date,
-            'modified_by' => Auth::user()->full_name,
+            'modified_by' => Auth::guard('inventory')->user()->full_name,
         ]);
     
         InventoryLog::create([
             'message' => "Added {$request->quantity_added} stock and logged new expiration date ({$request->new_expiration_date}) for item: {$item->item_name}",
             'type' => 'update',
             'user_id' => Auth::id(),
-            'manage_by' => Auth::user()->full_name,
+            'manage_by' => Auth::guard('inventory')->user()->full_name,
         ]);
     
         return redirect()->route('inventory.stockmanagement')->with('success', 'New expiration date logged and stock added successfully.');
@@ -1178,34 +1371,32 @@ public function getCategoryItems($categoryId)
     {
         $request->validate([
             'service_name' => 'required|string',
+            'status' => 'required|boolean',
         ]);
-
-        Services::create($request->all());
-
+    
+        Services::create([
+            'service_name' => $request->input('service_name'),
+            'status' => $request->boolean('status') ? 1 : 0,
+        ]);
+    
         return redirect()->route('inventory.services')->with('success', 'Service added successfully.');
     }
 
     public function updateService(Request $request, $id)
     {
+        $request->validate([
+            'service_name' => 'required|string',
+            'status' => 'required|boolean',
+        ]);
+    
         $service = Services::find($id);
-        $service->update($request->all());
+        $service->update([
+            'service_name' => $request->input('service_name'),
+            'status' => $request->boolean('status') ? 1 : 0,
+        ]);
+    
         return redirect()->route('inventory.services')->with('success', 'Service updated successfully.');
     }
-
-    public function deleteService($id)
-    {
-        DB::transaction(function () use ($id) {
-            // Delete dependent rows first
-            DB::table('services_items')->where('service_id', $id)->delete();
-    
-            // Delete the service
-            DB::table('services')->where('id', $id)->delete();
-        });
-    
-        return redirect()->back()->with('success', 'Service deleted successfully.');
-    }
-
-
 
     public function addDetails(Request $request, Service $service)
     {
@@ -1222,5 +1413,4 @@ public function getCategoryItems($categoryId)
         return redirect()->route('inventory.services')->with('success', 'Service detail added successfully!');
     }
     
-
 }

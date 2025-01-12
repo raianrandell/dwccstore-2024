@@ -5,7 +5,7 @@
 @section('content')
 <ol class="breadcrumb mb-3 mt-5">
     <li class="breadcrumb-item"><a href="{{ route('cashier.cashier_dashboard') }}">Home</a></li>
-    <li class="breadcrumb-item active"><a href="{{ route('cashier.fines_history') }}">Fines History</a></li>
+    <li class="breadcrumb-item active">Fines History</li>
 </ol>
 
 <div class="card mb-4" style="box-shadow: 12px 12px 7px rgba(0, 0, 0, 0.3);">

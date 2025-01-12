@@ -72,33 +72,51 @@ class AdminController extends Controller
             return back()->with('fail', 'This account is inactive, please contact the administrator.');
         }
 
-        // Attempt to authenticate the user with the credentials
-        if (Auth::attempt($credentials)) {
-            // Authentication passed, login the user and redirect
-            $user = Auth::user(); // Get the authenticated user
-            session(['loginId' => $user->id]); // Store user ID in session
-            return redirect()->route('admin.dashboard')->with('success', 'Login Successful');
+        if (Auth::guard('admin')->attempt($credentials)) {
+            return redirect()->route('admin.dashboard')->with([
+                'success' => 'Login Successful',
+                'full_name' => $user->full_name
+            ]);
         }
 
         // If password is incorrect
         return back()->with('fail', 'The password is incorrect.');
     }
 
+    public function userProfile()
+        {
+            // Retrieve the currently authenticated user
+            $user = Auth::guard('admin')->user();
+            return view('admin.userProfile', compact('user'));
+        }
+
+        public function changePassword(Request $request)
+        {
+            // Validate the request
+            $request->validate([
+                'current_password' => 'required',
+                'new_password' => 'required|min:8|confirmed',
+            ]);
+    
+            $user = Auth::guard('admin')->user();
+    
+            // Check if the current password is correct
+            if (!Hash::check($request->current_password, $user->password)) {
+                return redirect()->back()->withErrors(['current_password' => 'Current password is incorrect.']);
+            }
+    
+            // Update the password
+            $user->password = Hash::make($request->new_password);
+            $user->save();
+    
+            return redirect()->route('admin_login')->with('success', 'Password updated successfully. Please re-login.');
+        }
+
     // Admin Dashboard function
     public function adminDashboard()
     {
-        // Get the currently authenticated user
-        $loggedInUser = Auth::user();
-
-        // If the user is not logged in, redirect to login page
-        if (!$loggedInUser) {
-            return redirect('adminlogin')->with('fail', 'You must be logged in.');
-        }
-
-       
-
         // Pass the counts to the view
-        return view('admin.admin_dashboard', compact('loggedInUser'));
+        return view('admin.admin_dashboard');
     }
 
     // Admin Logout function
@@ -109,7 +127,7 @@ class AdminController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('admin.logout')->with('success', 'You have been logged out successfully.');
+        return redirect()->route('admin_login')->with('success', 'You have been logged out successfully.');
     }
 
     public function togaFines()

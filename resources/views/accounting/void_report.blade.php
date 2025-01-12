@@ -5,7 +5,7 @@
 @section('content')
 <ol class="breadcrumb mb-3 mt-5">
     <li class="breadcrumb-item"><a href="{{ route('accounting.dashboard') }}">Home</a></li>
-    <li class="breadcrumb-item active"><a href="{{ route('accounting.void_report') }}">Void Logs Report</a></li>
+    <li class="breadcrumb-item active">Void Logs Report</li>
 </ol>
 
 <!-- Page Title and Export Options -->

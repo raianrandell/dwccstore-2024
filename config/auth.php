@@ -40,6 +40,24 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        'inventory' => [  //<-- This is where we are adding custom guard.
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+
+        'cashier' => [  //<-- This is where we are adding custom guard.
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'admin' => [  //<-- This is where we are adding custom guard.
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'accounting' => [  //<-- This is where we are adding custom guard.
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
     ],
 
     /*

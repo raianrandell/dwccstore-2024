@@ -173,17 +173,23 @@ class SuperAdminController extends Controller
         // Redirect back with success message
         return redirect()->back()->with('success', 'User updated successfully!');
     }
-    
-    public function delete_user($id)
+
+    public function change_password(Request $request, $id)
     {
+        // Validate the request data
+        $validatedData = $request->validate([
+            'newPassword' => 'required|string|min:5|max:12|confirmed',
+        ]);
+
         // Find the user by ID
         $user = User::findOrFail($id);
-    
-        // Delete the user
-        $user->delete();
-    
+
+        // Update the user's password
+        $user->password = Hash::make($validatedData['newPassword']);
+        $user->save();
+
         // Redirect back with success message
-        return redirect()->back()->with('success', 'User deleted successfully!');
-    }    
-     
+        return redirect()->back()->with('success', 'Password changed successfully!');
+    }
+      
 }

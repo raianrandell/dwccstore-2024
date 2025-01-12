@@ -34,4 +34,6 @@ class Borrower extends Model
     {
         return $this->belongsTo(ItemForRent::class, 'item_id');
     }
+    
+    
 }

@@ -58,5 +58,10 @@ class Item extends Model
         return $this->hasMany(StockLog::class);
     }
 
+      public function returnedItems()
+    {
+        return $this->hasMany(ReturnedItem::class);
+    }
+
 
 }

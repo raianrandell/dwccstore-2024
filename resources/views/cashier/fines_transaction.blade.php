@@ -30,7 +30,7 @@
                     <tr>
                         <td>{{ $borrower->student_id }}</td>
                         <td>{{ $borrower->student_name }}</td>
-                        <td>{{ $borrower->item_name }}</td>
+                        <td>{{ $borrower->item_names }}</td>
                         <td>{{ $borrower->quantity }}</td>
                         <td>{{ $borrower->expected_date_returned }}</td>
                         <td>
@@ -38,7 +38,7 @@
                             <button class="btn btn-danger btn-sm rounded-circle view_btn" title="Return" 
                                     onclick="showFineModal('{{ $borrower->id }}', 
                                                           '{{ $borrower->student_name }}', 
-                                                          '{{ $borrower->item_name }}', 
+                                                          '{{ $borrower->item_names }}', 
                                                           '{{ $borrower->expected_date_returned }}')">
                                                           <i class="fa-solid fa-arrow-rotate-left"></i>
                             </button>

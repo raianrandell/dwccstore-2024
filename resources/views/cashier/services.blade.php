@@ -235,8 +235,11 @@
                                 <select class="form-select" id="serviceSelect" name="serviceSelect" required>
                                     <option value="" selected>Select a Service</option>
                                     @foreach ($services as $service)
-                                        <option value="{{ $service->id }}" data-price="{{ $service->price }}">
-                                            {{ $service->service_name }}</option>
+                                        @if ($service->status == 1)
+                                            <option value="{{ $service->id }}" data-price="{{ $service->price }}">
+                                                {{ $service->service_name }}
+                                            </option>
+                                        @endif
                                     @endforeach
                                 </select>
                                 <div class="invalid-feedback">
@@ -651,7 +654,7 @@
                                 showAlert('Transaction saved successfully.', 'success');
 
                                 const transactionNo = response.transaction_no || 'N/A';
-                                const cashierName = '{{ Auth::user()->full_name }}';
+                                const cashierName = '{{ Auth::guard('cashier')->user()->full_name; }}';
 
                                 // Trigger invoice generation and printing
                                 generateServicesInvoice({

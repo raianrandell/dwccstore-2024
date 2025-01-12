@@ -63,8 +63,8 @@
                 <div class="col-md-3">
                     <label for="barcode" class="form-label">Barcode Number</label>
                     <div class="input-group">
-                        <input type="text" class="form-control @error('barcode_no') is-invalid @enderror" id="barcode" name="barcode_no" placeholder="Generate barcode number" maxlength="13" value="{{ old('barcode_no', $item->barcode) }}">
-                        <button type="button" class="btn btn-outline-secondary bg-success text-white" id="generateBarcodeBtn">
+                        <input type="text" class="form-control @error('barcode_no') is-invalid @enderror" id="barcode" name="barcode_no" placeholder="Generate barcode number" maxlength="13" value="{{ old('barcode_no', $item->barcode) }}" readonly>
+                        <button type="button" class="btn btn-outline-secondary bg-success text-white" id="generateBarcodeBtn" disabled>
                             <i class="fas fa-sync" id="barcodeIcon"></i>
                         </button>
                         @error('barcode_no')

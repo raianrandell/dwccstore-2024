@@ -5,7 +5,7 @@
 @section('content')
 <ol class="breadcrumb mb-3 mt-5">
     <li class="breadcrumb-item"><a href="{{ route('cashier.cashier_dashboard') }}">Home</a></li>
-    <li class="breadcrumb-item active"><a href="{{ route('cashier.void_report') }}">Void Logs Report</a></li>
+    <li class="breadcrumb-item active">Void Logs Report</li>
 </ol>
 
 <!-- Page Title and Export Options -->
@@ -105,7 +105,7 @@
                         <td>{{ $void->voided_at ? $void->voided_at->format('m-d-Y h:i:s a') : 'N/A' }}</td>
                         <td>{{ $void->item_name ?? 'N/A' }}</td>
                         <td>{{ $void->items->category->category_name ?? 'N/A' }}</td>
-                        <td>{{ number_format($void->price, 2) }}</td>
+                        <td>₱{{ number_format($void->price, 2) }}</td>
                         <td>{{ $void->voided_by }}</td>
                     </tr>
                 @endforeach

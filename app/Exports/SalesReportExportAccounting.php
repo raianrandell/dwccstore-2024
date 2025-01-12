@@ -16,7 +16,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
-class SalesReportExport implements FromCollection, WithHeadings, WithEvents, WithCustomStartCell
+class SalesReportExportAccounting implements FromCollection, WithHeadings, WithEvents, WithCustomStartCell
 {
     protected $transactions;
     protected $startDate;
@@ -193,7 +193,7 @@ class SalesReportExport implements FromCollection, WithHeadings, WithEvents, Wit
                 $sheet->getStyle("F$footerStartRow:G$footerStartRow")->getFont()->setBold(true);
 
                 // --- Footer ---
-                $generatedBy = Auth::guard('cashier')->check() ? Auth::guard('cashier')->user()->full_name : 'N/A';
+                $generatedBy = Auth::guard('accounting')->check() ? Auth::guard('accounting')->user()->full_name : 'N/A';
                 $generationDate = Carbon::now()->format('F d, Y h:i:s a');
                 $footerStartRow = $sheet->getHighestRow() + 2;
 

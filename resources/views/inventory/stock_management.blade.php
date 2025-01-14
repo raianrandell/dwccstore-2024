@@ -147,11 +147,24 @@
              <div>
 
             </div>
-            <div>
-                <a href="{{ route('inventory.additem') }}" class="btn btn-outline-success">
-                    <i class="fas fa-plus me-1"></i> Add New Item
-                </a>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <a href="{{ route('inventory.priceUpdate') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-peso-sign me-1"></i> View Price Update
+                    </a>
+                    &nbsp;
+                    <a href="{{ route('inventory.transferItemsPrice') }}" class="btn btn-outline-warning me-2">
+                        <i class="fas fa-exchange-alt me-1"></i> View Transfer Items Price
+                    </a>
+                    &nbsp;
+                </div>
+                <div>
+                    <a href="{{ route('inventory.additem') }}" class="btn btn-outline-success">
+                        <i class="fas fa-plus me-1"></i> Add New Item
+                    </a>
+                </div>
             </div>
+            
         </div>
         <div class="card mb-4" style="box-shadow: 12px 12px 7px rgba(0, 0, 0, 0.3);">
             <div class="card-header">
@@ -1244,7 +1257,7 @@
                                 var option = document.createElement('option');
                                 option.value = item.id;
                                 option.textContent =
-                                    `${item.item_name} - Base Price: ₱${parseFloat(item.base_price).toFixed(2)}, Selling Price: ₱${parseFloat(item.selling_price).toFixed(2)}`;
+                                    `${item.item_name} - Base Price: ₱${parseFloat(item.base_price).toFixed(2)}, Selling Price: ₱${parseFloat(item.selling_price).toFixed(2)}, ${item.unit_of_measurement}`;
                                 option.classList.add('text-success');
                                 targetItemDropdown.appendChild(option);
                             });

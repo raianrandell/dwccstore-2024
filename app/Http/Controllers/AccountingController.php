@@ -124,37 +124,43 @@ class AccountingController extends Controller
             return view('accounting.charge_transaction', compact('transactions'));
         } 
         public function getTransactionDetails($transactionId)
-        {
-            // Find the transaction along with its related items and service items
-            $transaction = Transaction::with(['items', 'serviceItems.service'])->findOrFail($transactionId);
-            $items = $transaction->items;
-            $serviceItems = $transaction->serviceItems;
-            $totalAmount = $items->sum('total') + $serviceItems->sum('total'); // Adjust total calculation
-        
-            // Prepare the response data
-            $transactionDetails = [
-                'chargeType' => $transaction->charge_type,
-                'department' => $transaction->department,
-                'full_name' => $transaction->full_name,
-                'faculty_name' => $transaction->faculty_name,
-                'id_number' => $transaction->id_number,
-                'contact_number' => $transaction->contact_number,
-                'items' => $items,
-                'serviceItems' => $serviceItems->map(function($serviceItem) {
-                    return [
-                        'service_type' => $serviceItem->service_type,
-                        'number_of_copies' => $serviceItem->number_of_copies ?? 0, // Ensure default value
-                        'number_of_hours' => $serviceItem->number_of_hours ?? 0,   // Ensure default value
-                        'price' => $serviceItem->price,
-                        'total' => $serviceItem->total,
-                        'service' => $serviceItem->service
-                    ];
-                }),
-                'totalAmount' => $totalAmount // Send as number, format on frontend
-            ];
-        
-            return response()->json($transactionDetails);
+    {
+        // Find the transaction along with its related items and service items
+        $transaction = Transaction::with(['items', 'serviceItems.service'])->find($transactionId);
+
+        if (!$transaction) {
+            return response()->json(['success' => false, 'message' => 'Transaction not found.'], 404);
         }
+
+        $items = $transaction->items;
+        $serviceItems = $transaction->serviceItems;
+        $totalAmount = $items->sum('total') + $serviceItems->sum('total'); // Adjust total calculation
+
+        // Prepare the response data
+        $transactionDetails = [
+            'success' => true,
+            'chargeType' => $transaction->charge_type,
+            'department' => $transaction->department,
+            'full_name' => $transaction->full_name,
+            'faculty_name' => $transaction->faculty_name,
+            'id_number' => $transaction->id_number,
+            'contact_number' => $transaction->contact_number,
+            'items' => $items,
+            'serviceItems' => $serviceItems->map(function($serviceItem) {
+                return [
+                    'service_type' => $serviceItem->service_type,
+                    'number_of_copies' => $serviceItem->number_of_copies ?? 0, // Ensure default value
+                    'number_of_hours' => $serviceItem->number_of_hours ?? 0,   // Ensure default value
+                    'price' => $serviceItem->price,
+                    'total' => $serviceItem->total,
+                    'service' => $serviceItem->service
+                ];
+            }),
+            'totalAmount' => $totalAmount // Send as number, format on frontend
+        ];
+
+        return response()->json($transactionDetails);
+    }
         
         
 

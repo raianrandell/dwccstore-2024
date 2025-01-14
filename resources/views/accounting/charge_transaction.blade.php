@@ -131,141 +131,170 @@
 
 <!-- JavaScript Section -->
 <script>
- function loadTransactionDetails(transactionId) {
-    fetch(`/get-transaction-details/${transactionId}`)
-        .then(response => response.json())
-        .then(data => {
-            console.log(data); // Debugging: Inspect the data structure
+    // Pass named route URLs to JavaScript using Blade's route helper
+    const routes = {
+        getTransactionDetails: @json(route('accounting.getTransactionDetails', ['id' => 'TRANSACTION_ID'])),
+        updateTransactionStatus: @json(route('accounting.updateTransactionStatus', ['id' => 'TRANSACTION_ID'])),
+    };
 
-            // Build Charge To HTML
-            let chargeToHTML = '';
-            if (data.chargeType === 'Department') {
-                chargeToHTML = `
-                    <h4>CHARGE TO: DEPARTMENT</h4>
-                    <strong>Department Name:</strong> ${data.department}<br>
-                    <strong>Full Name:</strong> ${data.full_name}<br>
-                    <strong>ID Number:</strong> ${data.id_number}<br>
-                    <strong>Contact Number:</strong> ${data.contact_number}<br>
-                `;
-            } else if (data.chargeType === 'Faculty') {
-                chargeToHTML = `
-                    <h4>CHARGE TO: FACULTY</h4>
-                    <strong>Faculty Name:</strong> ${data.faculty_name}<br>
-                    <strong>ID Number:</strong> ${data.id_number}<br>
-                    <strong>Contact Number:</strong> ${data.contact_number}<br>
-                `;
-            }
+    /**
+     * Load Transaction Details into the Modal
+     * @param {number} transactionId
+     */
+    function loadTransactionDetails(transactionId) {
+        // Replace 'TRANSACTION_ID' placeholder with actual transaction ID
+        const url = routes.getTransactionDetails.replace('TRANSACTION_ID', transactionId);
 
-            // Build Items Table HTML
-            let itemsHTML = '';
-            if (!data.serviceItems || data.serviceItems.length === 0) {
-                itemsHTML = `
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <i class="fas fa-table me-1"></i>
-                            Item Credit List
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Item Name</th>
-                                        <th>Quantity</th>
-                                        <th>Price</th>
-                                        <th>Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    showAlert(data.message || 'Failed to load transaction details.', 'danger');
+                    return;
+                }
 
-                data.items.forEach(item => {
+                console.log(data); // Debugging: Inspect the data structure
+
+                // Build Charge To HTML
+                let chargeToHTML = '';
+                if (data.chargeType === 'Department') {
+                    chargeToHTML = `
+                        <h4>CHARGE TO: DEPARTMENT</h4>
+                        <strong>Department Name:</strong> ${data.department}<br>
+                        <strong>Full Name:</strong> ${data.full_name}<br>
+                        <strong>ID Number:</strong> ${data.id_number}<br>
+                        <strong>Contact Number:</strong> ${data.contact_number}<br>
+                    `;
+                } else if (data.chargeType === 'Faculty') {
+                    chargeToHTML = `
+                        <h4>CHARGE TO: FACULTY</h4>
+                        <strong>Faculty Name:</strong> ${data.faculty_name}<br>
+                        <strong>ID Number:</strong> ${data.id_number}<br>
+                        <strong>Contact Number:</strong> ${data.contact_number}<br>
+                    `;
+                }
+
+                // Build Items Table HTML
+                let itemsHTML = '';
+                if (!data.serviceItems || data.serviceItems.length === 0) {
+                    itemsHTML = `
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-table me-1"></i>
+                                Item Credit List
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Item Name</th>
+                                            <th>Quantity</th>
+                                            <th>Price</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+
+                    data.items.forEach(item => {
+                        itemsHTML += `
+                            <tr>
+                                <td>${item.item_name}</td>
+                                <td>${item.quantity}</td>
+                                <td>${parseFloat(item.price).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</td>
+                                <td>${parseFloat(item.total).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</td>
+                            </tr>
+                        `;
+                    });
+
                     itemsHTML += `
-                        <tr>
-                            <td>${item.item_name}</td>
-                            <td>${item.quantity}</td>
-                            <td>${parseFloat(item.price).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</td>
-                            <td>${parseFloat(item.total).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</td>
-                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     `;
-                });
+                } else {
+                    // If service items exist, hide the Item Credit List table
+                    itemsHTML = '';
+                }
 
-                itemsHTML += `
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
-            } else {
-                // If service items exist, hide the Item Credit List table
-                itemsHTML = '';
-            }
+                // Build Service Items Table HTML if there are service items
+                let serviceItemsHTML = '';
+                if (data.serviceItems && data.serviceItems.length > 0) {
+                    serviceItemsHTML = `
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-table me-1"></i>
+                                Service Items Credit List
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Service Name</th>
+                                            <th>Service Type</th>
+                                            <th>Number of Copies</th>
+                                            <th>Number of Hours</th>
+                                            <th>Price</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
 
-            // Build Service Items Table HTML if there are service items
-            let serviceItemsHTML = '';
-            if (data.serviceItems && data.serviceItems.length > 0) {
-                serviceItemsHTML = `
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <i class="fas fa-table me-1"></i>
-                            Service Items Credit List
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Service Name</th>
-                                        <th>Service Type</th>
-                                        <th>Number of Copies</th>
-                                        <th>Number of Hours</th>
-                                        <th>Price</th>
-                                        <th>Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
+                    data.serviceItems.forEach(service => {
+                        serviceItemsHTML += `
+                            <tr>
+                                <td>${service.service.service_name}</td>
+                                <td>${service.service_type}</td>
+                                <td>${service.number_of_copies > 0 ? service.number_of_copies : '-'}</td>
+                                <td>${service.number_of_hours > 0 ? service.number_of_hours : '-'}</td>
+                                <td>${parseFloat(service.price).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</td>
+                                <td>${parseFloat(service.total).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</td>
+                            </tr>
+                        `;
+                    });
 
-                data.serviceItems.forEach(service => {
                     serviceItemsHTML += `
-                        <tr>
-                            <td>${service.service.service_name}</td>
-                            <td>${service.service_type}</td>
-                            <td>${service.number_of_copies > 0 ? service.number_of_copies : '-'}</td>
-                            <td>${service.number_of_hours > 0 ? service.number_of_hours : '-'}</td>
-                            <td>${parseFloat(service.price).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</td>
-                            <td>${parseFloat(service.total).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</td>
-                        </tr>
-                    `;
-                });
-
-                serviceItemsHTML += `
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
+                    `;
+                }
+
+                // Combine all HTML
+                let detailsHTML = `
+                    ${chargeToHTML}
+                    <br>
+                    ${itemsHTML}
+                    ${serviceItemsHTML} <!-- Insert Service Items Table -->
                 `;
-            }
 
-            // Combine all HTML
-            let detailsHTML = `
-                ${chargeToHTML}
-                <br>
-                ${itemsHTML}
-                ${serviceItemsHTML} <!-- Insert Service Items Table -->
-            `;
+                // Update the modal content
+                document.getElementById('transactionDetailsContent').innerHTML = detailsHTML;
+                document.getElementById('totalAmountValue').innerText = parseFloat(data.totalAmount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
+            })
+            .catch(error => {
+                console.error('Error loading transaction details:', error);
+                showAlert('Failed to load transaction details. Please try again.', 'danger');
+            });
 
-            // Update the modal content
-            document.getElementById('transactionDetailsContent').innerHTML = detailsHTML;
-            document.getElementById('totalAmountValue').innerText = parseFloat(data.totalAmount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
-        })
-        .catch(error => console.error('Error loading transaction details:', error));
+        // Store the transaction ID in the modal for later use
+        document.getElementById('viewDetailsModal').setAttribute('data-transaction-id', transactionId);
+    }
 
-    // Store the transaction ID in the modal for later use
-    document.getElementById('viewDetailsModal').setAttribute('data-transaction-id', transactionId);
-}
-
-
+    /**
+     * Process Cash Payment
+     */
     function processCashPayment() {
-        const transactionId = document.getElementById('viewDetailsModal').getAttribute('data-transaction-id');
+        const modal = document.getElementById('viewDetailsModal');
+        const transactionId = modal.getAttribute('data-transaction-id');
         const cashPayment = document.getElementById('cashPayment').value;
 
         if (!cashPayment || cashPayment <= 0) {
@@ -277,7 +306,10 @@
         const submitButton = document.querySelector('button.btn-success');
         submitButton.disabled = true;
 
-        fetch(`/update-transaction-status/${transactionId}`, {
+        // Replace 'TRANSACTION_ID' placeholder with actual transaction ID
+        const url = routes.updateTransactionStatus.replace('TRANSACTION_ID', transactionId);
+
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -285,7 +317,12 @@
             },
             body: JSON.stringify({ cashPayment })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Display Success Alert
@@ -311,8 +348,10 @@
                 }
 
                 // Close the modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('viewDetailsModal'));
-                modal.hide();
+                const bootstrapModal = bootstrap.Modal.getInstance(modal);
+                if (bootstrapModal) {
+                    bootstrapModal.hide();
+                }
 
                 // Optionally, reset the payment form
                 document.getElementById('cashPaymentForm').reset();
@@ -331,6 +370,11 @@
         });
     }
 
+    /**
+     * Display Alert Messages
+     * @param {string} message - The alert message
+     * @param {string} type - The alert type ('success', 'danger', etc.)
+     */
     function showAlert(message, type) {
         const alertPlaceholder = document.getElementById('alertPlaceholder');
         const wrapper = document.createElement('div');

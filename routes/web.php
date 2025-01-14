@@ -90,7 +90,12 @@ Route::prefix('inventory')->group(function () {
         Route::put('/services/{id}', [InventoryController::class, 'updateService'])->name('inventory.update_service');
          Route::put('/damage_transactions/{id}', [InventoryController::class, 'updateDamageItem'])->name('inventory.damage_transactions_update');
           Route::post('/logout', [InventoryController::class, 'inventorylogout'])->name('inventory.logout');
-          
+
+             // Route for Price Update
+             Route::get('/inventory/price-update', [InventoryController::class, 'showPriceUpdate'])->name('inventory.priceUpdate');
+
+          // Route for transferItems
+            Route::get('/inventory/transferItems', [InventoryController::class, 'showTransferItemsPrice'])->name('inventory.transferItemsPrice');     
     });
 });
 
@@ -168,9 +173,9 @@ Route::prefix('admin')->group(function () {
         Route::get('/total-item-report/pdf', [AdminController::class, 'exportTotalItemReportPdf'])->name('admin.total_item_report.pdf');
         Route::get('/total-item-report/excel', [AdminController::class, 'exportTotalItemReport'])->name('admin.total_item_report.excel');
 
-        Route::GET('/accounting_sales', [AdminController::class, 'salesReport'])->name('admin.sales_report');
-        Route::get('/accounting/sales-report/pdf', [AdminController::class, 'exportSalesReportPdf'])->name('admin.sales_report.pdf');
-        Route::get('/accounting/sales-report/excel', [AdminController::class, 'exportSalesReportExcel'])->name('admin.sales_report.excel');
+        Route::GET('/admin_sales', [AdminController::class, 'salesReport'])->name('admin.sales_report');
+        Route::get('/admin/sales-report/pdf', [AdminController::class, 'exportSalesReportPdf'])->name('admin.sales_report.pdf');
+        Route::get('/admin/sales-report/excel', [AdminController::class, 'exportSalesReportExcel'])->name('admin.sales_report.excel');
 
         Route::get('/damage-item-report', [AdminController::class, 'damageItemReport'])->name('admin.damage_item_report');
         Route::get('/damage-item-report/pdf', [AdminController::class, 'exportDamageItemReportPdf'])->name('admin.damage_item_report.pdf');
@@ -200,8 +205,11 @@ Route::prefix('accounting')->group(function () {
         Route::GET('/accounting_userprofile', [AccountingController::class, 'userProfile'])->name('accounting.userprofile');
 
         Route::GET('/chargetransaction', [AccountingController::class, 'chargeTransaction'])->name('accounting.chargeTransaction');
-        Route::get('/get-transaction-details/{id}', [AccountingController::class, 'getTransactionDetails']);
-        Route::post('/update-transaction-status/{id}', [AccountingController::class, 'updateTransactionStatus']);
+    // Route for fetching transaction details
+    Route::get('/get-transaction-details/{id}', [AccountingController::class, 'getTransactionDetails'])->name('accounting.getTransactionDetails');
+
+    // Route for updating transaction status
+    Route::post('/update-transaction-status/{id}', [AccountingController::class, 'updateTransactionStatus'])->name('accounting.updateTransactionStatus');
 
 
         Route::post('/user/profile/update-password', [AccountingController::class, 'changePassword'])->name('accounting.changePassword');
@@ -232,11 +240,6 @@ Route::prefix('accounting')->group(function () {
     });
 });
 
-
-// Cashier, Admin, Accounting Routes (using 'auth' middleware)
-Route::middleware(['auth'])->group(function () {
- 
-});
 
 // Inventory Login Authentication
 Route::GET('/inventorylogin', [InventoryController::class, 'inventorylogin'])->name('inventory.login');

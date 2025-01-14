@@ -21,15 +21,20 @@ class ItemLog extends Model
         'new_qty_in_stock', 
         'old_barcode', 
         'new_barcode',
-        'old_expiration_date', // New field
-        'new_expiration_date', // New field
+        'old_expiration_date', 
+        'new_expiration_date', 
         'user_id',
         'update_by',
+    ];
+    
+    protected $casts = [
+        'old_expiration_date' => 'datetime',
+        'new_expiration_date' => 'datetime',
     ];
 
     public function item()
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(Item::class, 'item_id'); 
     }
 
     public function user()

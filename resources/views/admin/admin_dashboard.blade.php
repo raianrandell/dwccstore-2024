@@ -105,7 +105,7 @@
         datasets: [{
             label: 'Sales',
             data: {!! json_encode($sales) !!}, // Sales data from PHP
-            fill: false,
+            fill: true,
             borderColor: 'rgb(75, 192, 192)', // Line color
             pointBorderColor: 'rgb(75, 192, 192)', // Data point border color
             pointBackgroundColor: 'rgb(75, 192, 192)', // Data point background color

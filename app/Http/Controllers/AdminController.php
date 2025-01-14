@@ -186,80 +186,154 @@ class AdminController extends Controller
 
     public function addBorrower(Request $request)
     {
-        // Validate request inputs
-        $request->validate([
-            'student_id' => 'required|string|max:255',
-            'student_name' => 'required|string|max:255',
-            'item_ids' => 'required|array', // Ensure exactly 3 items are selected
-            'item_ids.*' => 'exists:item_for_rent,id',
-            'date_issued' => 'required|date|before_or_equal:today',
-            'expected_date_returned' => 'required|date|after:date_issued',
-        ], [
-            'item_ids.size' => 'You must select exactly 3 items.',
+        DB::beginTransaction(); // Start a transaction to ensure data consistency
+    
+        try {
+            // Validate the request data
+            $request->validate([
+                'student_id' => 'required|string|max:255',
+                'student_name' => 'required|string|max:255',
+                'date_issued' => 'required|date',
+                'expected_date_returned' => 'required|date|after_or_equal:date_issued',
+                'item_ids' => 'required|array|min:1',
+                'item_ids.*' => 'exists:item_for_rent,id',
+            ]);
+    
+            // Check if the student has already borrowed items
+            $activeBorrowed = BorrowedItem::whereHas('borrower', function ($query) use ($request) {
+                $query->where('student_number', $request->student_id);
+            })->where('status', 'Borrowed')->exists();
+    
+            if ($activeBorrowed) {
+                throw new \Exception("This student has already borrowed items and has not returned them yet.");
+            }
+    
+            // Check item stock and prepare data for borrowed items
+            $borrowedItems = [];
+            foreach ($request->item_ids as $itemId) {
+                $item = ItemForRent::findOrFail($itemId);
+    
+                $availableQuantity = $item->total_quantity - $item->quantity_borrowed;
+                if ($availableQuantity <= 0) {
+                    throw new \Exception("The item '{$item->item_name}' is currently out of stock.");
+                }
+    
+                // Store borrowed items info for insertion later
+                $borrowedItems[] = [
+                    'item_id' => $item->id,
+                    'quantity' => 1, // Assuming 1 item borrowed per checkbox
+                ];
+            }
+    
+            // Create a new borrower
+            $borrower = Borrower::create([
+                'student_number' => $request->student_id,
+                'student_name' => $request->student_name,
+            ]);
+    
+            // Create borrowed_items records (for each item borrowed)
+            foreach ($borrowedItems as $borrowedItemData) {
+                $borrowedItem = BorrowedItem::create([
+                    'borrower_id' => $borrower->id,
+                    'borrowed_date' => $request->date_issued,
+                    'return_date' => $request->expected_date_returned,
+                    'status' => 'Borrowed',
+                    'item_id' => $borrowedItemData['item_id'], // Store the item_id here
+                ]);
+    
+                // Update the item stock in item_for_rent
+                $item = ItemForRent::findOrFail($borrowedItemData['item_id']);
+                $item->increment('quantity_borrowed', $borrowedItemData['quantity']);
+            }
+    
+            DB::commit(); // Commit the transaction
+    
+            return redirect()->back()->with('success', 'Borrower and items successfully added!');
+        } catch (\Exception $e) {
+            DB::rollBack(); // Rollback the transaction in case of an error
+    
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+    
+
+    public function returnBorrower(Request $request)
+    {
+        // Validate the request
+        $validated = $request->validate([
+            'item_ids' => 'required|array|min:1',
+            'item_ids.*' => 'exists:borrowed_items,id',
+            'conditions' => 'required|array|min:1',
+            'conditions.*' => 'in:Good,Damaged,Lost',
+            'fees' => 'nullable|array',
+            'fees.*' => 'nullable|numeric|min:0',
         ]);
     
-        // Check if the student has already borrowed items
-        $existingBorrower = Borrower::where('student_id', $request->student_id)->first();
-        if ($existingBorrower) {
-            return redirect()->back()->withErrors([
-                'student_id' => 'This student has already borrowed items. Please return the previous items before borrowing again.',
-            ]);
-        }
+        try {
+            $borrowerId = null;
+            $problematicItems = [];
+            $processedItems = 0;
+            $lateFeePerDay = 10; // Example daily late fee
     
-        // Check availability of selected items
-        $items = ItemForRent::whereIn('id', $request->item_ids)->get();
-        $borrowedItems = [];
-        $totalQuantity = count($items); // This is the number of items borrowed (should be 3)
+            foreach ($request->item_ids as $itemId) {
+                $borrowedItem = BorrowedItem::findOrFail($itemId);
+                $borrowerId = $borrowedItem->borrower_id;
     
-        foreach ($items as $item) {
-            $availableQuantity = $item->total_quantity - $item->quantity_borrowed;
-            if ($availableQuantity <= 0) {
-                return redirect()->back()->withErrors([
-                    'item_ids' => "Sorry, '{$item->item_name}' is no longer available for borrowing.",
+                $condition = $request->conditions[$itemId];
+                $fee = $request->fees[$itemId] ?? 0;
+    
+                // Convert return_date to Carbon instance
+                $returnDate = Carbon::parse($borrowedItem->return_date)->startOfDay();
+                $currentDate = now()->startOfDay();
+    
+                // Calculate days late and late fee
+                $daysLate = 0;
+                $lateFee = 0;
+    
+                if ($currentDate->greaterThan($returnDate)) {
+                    $daysLate = ($currentDate->diffInDays($returnDate))*(-1);
+                    $lateFee = $daysLate * $lateFeePerDay;
+                }
+    
+                if ($condition === 'Good' && $daysLate === 0) {
+                    // Process Good items with no late days
+                    $borrowedItem->item->decrement('quantity_borrowed', 1);
+                    $borrowedItem->delete();
+                    $processedItems++;
+                } else {
+                    // Collect problematic items for modal display
+                    $problematicItems[] = [
+                        'item_name' => $borrowedItem->item->item_name,
+                        'condition' => $condition,
+                        'fee' => $fee,
+                        'days_late' => $daysLate,
+                        'late_fee' => $lateFee,
+                    ];
+                }
+            }
+    
+            // If there are problematic items, return them to be shown in a modal
+            if (!empty($problematicItems)) {
+                return redirect()->back()->with([
+                    'error_modal' => true,
+                    'problematic_items' => $problematicItems,
                 ]);
             }
     
-            $borrowedItems[] = $item->item_name;
+            // If all items were successfully processed
+            if ($processedItems > 0) {
+                $remainingItems = BorrowedItem::where('borrower_id', $borrowerId)->count();
+                if ($remainingItems === 0) {
+                    Borrower::find($borrowerId)->delete();
+                }
     
-            // Update the borrowed quantity for the item
-            $item->increment('quantity_borrowed');
-        }
-    
-        // Create the borrowing record and store the number of borrowed items
-        Borrower::create([
-            'student_id' => $request->student_id,
-            'student_name' => $request->student_name,
-            'item_names' => implode(', ', $borrowedItems), // Store item names as a comma-separated string
-            'quantity' => $totalQuantity, // Store the total number of borrowed items (should be 3)
-            'date_issued' => $request->date_issued,
-            'expected_date_returned' => $request->expected_date_returned,
-        ]);
-    
-        // Return success message
-        return redirect()->route('admin.toga_fines')->with('success', 'Items borrowed successfully!');
-    }  
-    
-    public function returnBorrower(Request $request, $id)
-    {
-        $borrower = Borrower::findOrFail($id);
-
-        // Process returned items
-        $returnedItems = $request->input('items', []);
-        foreach ($returnedItems as $itemData) {
-            if (!empty($itemData['returned'])) {
-                $itemName = $itemData['returned']; // Get item name
-                $condition = $itemData['condition']; // Get condition
-
-                // Update inventory or save the return status
-                logger("Item: {$itemName}, Condition: {$condition}");
+                return redirect()->back()->with('success', 'Good condition item(s) returned successfully.');
             }
+    
+            return redirect()->back()->with('info', 'No items were processed.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'An error occurred while processing the return.');
         }
-
-        // Update the borrower return date
-        $borrower->actual_date_returned = now();
-        $borrower->save();
-
-        return redirect()->route('admin.toga_fines')->with('success', 'Items returned successfully!');
     }
 
     public function totalItemReport(Request $request)

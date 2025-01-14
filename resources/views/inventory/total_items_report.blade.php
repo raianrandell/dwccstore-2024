@@ -75,15 +75,15 @@
 
                 <!-- Filter Button -->
                 <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100" style="font-size: 12px">
-                        <i class="fas fa-filter"></i> Apply Filters
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Filter
                     </button>
                 </div>
 
                 <!-- Reset Button -->
                 <div class="col-md-1 d-flex align-items-end">
-                    <a href="{{ route('inventory.total_item_report') }}" class="btn btn-secondary w-100" style="font-size: 12px">
-                        <i class="fas fa-undo"></i> Reset Filters
+                    <a href="{{ route('inventory.total_item_report') }}" class="btn btn-secondary w-100">
+                        <i class="fas fa-undo"></i> Reset
                     </a>
                 </div>
             </div>

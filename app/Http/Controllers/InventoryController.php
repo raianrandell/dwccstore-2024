@@ -44,7 +44,7 @@ class InventoryController extends Controller
         $items = Item::with(['category', 'stockLogs'])->get();
     
         // Fetch all categories to populate the dropdown
-        $categories = Category::all();
+        $categories = Category::orderBy('category_name', 'ASC')->get();
     
         // Get the authenticated user ID and full name
         $userId = Auth::guard('inventory')->user()->id;
@@ -429,7 +429,7 @@ class InventoryController extends Controller
                 'new_barcode' => $validatedData['barcode_no'],
                 'old_expiration_date' => $item->expiration_date,
                 'new_expiration_date' => $validatedData['new_expiration_date'] ?? $item->expiration_date,
-                'user_id' => $user ? $user->id : null,
+                'user_id' => Auth::guard('inventory')->user()->id,
                 'update_by' => Auth::guard('inventory')->user()->full_name,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -1095,11 +1095,8 @@ public function getCategoryItems($categoryId)
             'transferred_quantity' => $sourceItem->qtyInStock,
             'base_price' => $sourceItem->base_price,
             'selling_price' => $sourceItem->selling_price,
-            'transferred_by' => Auth::user()->full_name,
+            'transferred_by' => Auth::guard('inventory')->user()->full_name,
         ]);
-    
-        // Remove the source item after transferring stock
-        $sourceItem->delete();
     
         // Redirect back with success message
         return redirect()->route('inventory.stockmanagement')->with('success', 'Item transferred successfully.');
@@ -1412,5 +1409,34 @@ public function getCategoryItems($categoryId)
 
         return redirect()->route('inventory.services')->with('success', 'Service detail added successfully!');
     }
+
+    public function showTransferItemsPrice()
+    {
+        // Fetch all transfer item logs with relationships
+        $transferItemLogs = TransferItemLogs::with(['sourceItem', 'targetItem'])->get();
+    
+        // Pass the variable to the view
+        return view('inventory.transfer_item_price', compact('transferItemLogs'));
+    }
+    
+    /**
+     * Show the form for updating prices.
+     */
+   public function showPriceUpdate()
+    {
+        // Fetch all price update logs, optionally with pagination
+        $priceUpdates = ItemLog::with(['item', 'user'])
+                                ->orderBy('created_at', 'desc')
+                                ->paginate(15); // Adjust the number as needed
+
+        return view('inventory.price_update', compact('priceUpdates'));
+    }
+
+    public function viewPriceUpdate($id)
+{
+    $priceUpdate = ItemLog::findOrFail($id);
+    return view('inventory.price_update', compact('priceUpdate'));
+}
+
     
 }

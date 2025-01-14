@@ -63,5 +63,10 @@ class Item extends Model
         return $this->hasMany(ReturnedItem::class);
     }
 
+    public function itemLogs()
+    {
+        return $this->hasMany(ItemLog::class, 'item_id');
+    }
+
 
 }

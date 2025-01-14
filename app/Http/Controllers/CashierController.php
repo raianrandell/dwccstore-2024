@@ -287,8 +287,12 @@ class CashierController extends Controller
             'barcode' => 'required|string|max:255',
         ]);
 
-        // Fetch the item based on the barcode
-        $item = Item::where('barcode', $request->barcode)->first();
+        $item = Item::where('barcode', $request->barcode)
+                    ->where(function($query) {
+                        $query->whereNull('expiration_date')
+                              ->orWhere('expiration_date', '>', now());
+                    })
+                    ->first();
 
         if ($item) {
             return response()->json(['success' => true, 'item' => $item]);

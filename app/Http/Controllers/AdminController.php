@@ -43,6 +43,8 @@ use App\Exports\SalesReportExportAdmin;
 use App\Exports\VoidItemReportExportAdmin;
 use App\Exports\ReturnedItemsReportExportAdmin;
 use App\Exports\DamageItemReportExportAdmin;
+use App\Models\BorrowedItem;
+use App\Models\UserLog;
 
 
 
@@ -94,8 +96,10 @@ class AdminController extends Controller
                 return Carbon::parse($date)->format('F d, Y');
             })->toArray();
         $sales = $salesData->pluck('sales')->toArray();
+
+        $users = User::with(['logs'])->get();
     
-        return view('admin.admin_dashboard', compact('totalSales', 'totalItems', 'damageItems', 'grandTotal', 'dates', 'sales'));
+        return view('admin.admin_dashboard', compact('totalSales', 'totalItems', 'damageItems', 'grandTotal', 'dates', 'sales', 'users'));
     }
     
     
@@ -125,6 +129,10 @@ class AdminController extends Controller
         }
 
         if (Auth::guard('admin')->attempt($credentials)) {
+
+            // Store the logged-in user's ID in the session
+            $request->session()->put('loginId', $user->id);
+
             return redirect()->route('admin.dashboard')->with([
                 'success' => 'Login Successful',
                 'full_name' => $user->full_name
@@ -166,7 +174,21 @@ class AdminController extends Controller
 
     // Admin Logout function
     public function adminlogout(Request $request)
-    {
+    {   
+        // Get the logged-in admin's ID
+        $userId = Auth::guard('admin')->user()->id;
+
+        if ($userId) {
+            // Log the "Not Active" status in the user logs table
+            \DB::table('user_logs')->insert([
+                'user_id' => $userId, // The ID of the logged-in user
+                'activity' => 'Offline', // Activity description
+                'ip_address' => $request->ip(), // Capture the user's IP address
+                'created_at' => now(), // Record the current timestamp
+                'updated_at' => now(),
+            ]);
+        }
+
         Auth::logout();
 
         $request->session()->invalidate();
@@ -177,90 +199,162 @@ class AdminController extends Controller
 
     public function togaFines()
     {
-        // Retrieve all borrowers from the database
-        $borrowers = Borrower::all();
+        $borrowers = Borrower::with('borrowedItems.item')->get(); // Eager load borrowedItems and their related item
         $items = ItemForRent::all();
-
         return view('admin.toga_fines', compact('borrowers', 'items'));
     }
 
     public function addBorrower(Request $request)
     {
-        // Validate request inputs
-        $request->validate([
-            'student_id' => 'required|string|max:255',
-            'student_name' => 'required|string|max:255',
-            'item_ids' => 'required|array', // Ensure exactly 3 items are selected
-            'item_ids.*' => 'exists:item_for_rent,id',
-            'date_issued' => 'required|date|before_or_equal:today',
-            'expected_date_returned' => 'required|date|after:date_issued',
-        ], [
-            'item_ids.size' => 'You must select exactly 3 items.',
-        ]);
+        DB::beginTransaction();
     
-        // Check if the student has already borrowed items
-        $existingBorrower = Borrower::where('student_id', $request->student_id)->first();
-        if ($existingBorrower) {
-            return redirect()->back()->withErrors([
-                'student_id' => 'This student has already borrowed items. Please return the previous items before borrowing again.',
+        try {
+            // Validate the request
+            $request->validate([
+                'student_id' => 'required|string|max:255',
+                'student_name' => 'required|string|max:255',
+                'date_issued' => 'required|date',
+                'expected_date_returned' => 'required|date|after_or_equal:date_issued',
+                'item_ids' => 'required|array|min:1',
+                'item_ids.*' => 'exists:item_for_rent,id',
             ]);
+    
+            // Check if the student already has active borrowed items
+            $activeBorrowed = BorrowedItem::whereHas('borrower', function ($query) use ($request) {
+                $query->where('student_number', $request->student_id);
+            })->where('status', 'Borrowed')->exists();
+    
+            if ($activeBorrowed) {
+                throw new \Exception("This student has already borrowed items and has not returned them yet.");
+            }
+    
+            // Prepare the borrowed items and validate stock
+            $borrowedItems = [];
+            foreach ($request->item_ids as $itemId) {
+                $item = ItemForRent::findOrFail($itemId);
+    
+                $availableQuantity = $item->total_quantity - $item->quantity_borrowed;
+                if ($availableQuantity <= 0) {
+                    throw new \Exception("The item '{$item->item_name}' is currently out of stock.");
+                }
+    
+                $borrowedItems[] = [
+                    'item_id' => $item->id,
+                    'quantity' => 1, // Only one quantity per checkbox
+                ];
+            }
+    
+            // Create the borrower record
+            $borrower = Borrower::create([
+                'student_number' => $request->student_id,
+                'student_name' => $request->student_name,
+            ]);
+    
+            // Deduct stock and create borrowed item records
+            foreach ($borrowedItems as $borrowedItemData) {
+                BorrowedItem::create([
+                    'borrower_id' => $borrower->id,
+                    'borrowed_date' => $request->date_issued,
+                    'return_date' => $request->expected_date_returned,
+                    'status' => 'Borrowed',
+                    'item_id' => $borrowedItemData['item_id'],
+                ]);
+    
+                ItemForRent::findOrFail($borrowedItemData['item_id'])->increment('quantity_borrowed', $borrowedItemData['quantity']);
+            }
+    
+            DB::commit();
+    
+            return redirect()->back()->with('success', 'Borrower and items successfully added!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }
+    }
     
-        // Check availability of selected items
-        $items = ItemForRent::whereIn('id', $request->item_ids)->get();
-        $borrowedItems = [];
-        $totalQuantity = count($items); // This is the number of items borrowed (should be 3)
-    
-        foreach ($items as $item) {
-            $availableQuantity = $item->total_quantity - $item->quantity_borrowed;
-            if ($availableQuantity <= 0) {
-                return redirect()->back()->withErrors([
-                    'item_ids' => "Sorry, '{$item->item_name}' is no longer available for borrowing.",
+
+    public function returnBorrower(Request $request)
+    {
+        $validated = $request->validate([
+            'item_ids' => 'required|array|min:1',
+            'item_ids.*' => 'exists:borrowed_items,id',
+            'conditions' => 'required|array|min:1',
+            'conditions.*' => 'in:Good,Damaged,Lost',
+            'fees' => 'nullable|array',
+            'fees.*' => 'nullable|numeric|min:0',
+        ]);
+
+        try {
+            $borrowerId = null;
+            $problematicItems = [];
+            $processedItems = 0;
+            $lateFeePerDay = 10;
+
+            DB::beginTransaction();
+
+            foreach ($request->item_ids as $itemId) {
+                $borrowedItem = BorrowedItem::with('item')->findOrFail($itemId);
+                $borrowerId = $borrowedItem->borrower_id;
+
+                $condition = $request->conditions[$itemId];
+                $fee = $request->fees[$itemId] ?? 0;
+
+                $returnDate = Carbon::parse($borrowedItem->return_date)->startOfDay();
+                $currentDate = Carbon::now()->startOfDay();
+
+                $daysLate = 0;
+                $lateFee = 0;
+
+                if ($currentDate->greaterThan($returnDate)) {
+                    $daysLate = $currentDate->diffInDays($returnDate);
+                    $lateFee = $daysLate * $lateFeePerDay;
+                }
+
+                if ($condition === 'Good' && $daysLate === 0) {
+                    // Decrement the borrowed quantity
+                    $borrowedItem->item->decrement('quantity_borrowed', 1);
+                    // Delete the borrowed item record
+                    $borrowedItem->delete();
+                    $processedItems++;
+                } else {
+                    // Accumulate problematic items for further processing
+                    $problematicItems[] = [
+                        'item_name' => $borrowedItem->item->item_name,
+                        'condition' => $condition,
+                        'fee' => $fee,
+                        'days_late' => $daysLate,
+                        'late_fee' => $lateFee,
+                    ];
+                }
+            }
+
+            if (!empty($problematicItems)) {
+                DB::rollBack();
+                return redirect()->back()->with([
+                    'error_modal' => true,
+                    'problematic_items' => $problematicItems,
                 ]);
             }
-    
-            $borrowedItems[] = $item->item_name;
-    
-            // Update the borrowed quantity for the item
-            $item->increment('quantity_borrowed');
-        }
-    
-        // Create the borrowing record and store the number of borrowed items
-        Borrower::create([
-            'student_id' => $request->student_id,
-            'student_name' => $request->student_name,
-            'item_names' => implode(', ', $borrowedItems), // Store item names as a comma-separated string
-            'quantity' => $totalQuantity, // Store the total number of borrowed items (should be 3)
-            'date_issued' => $request->date_issued,
-            'expected_date_returned' => $request->expected_date_returned,
-        ]);
-    
-        // Return success message
-        return redirect()->route('admin.toga_fines')->with('success', 'Items borrowed successfully!');
-    }  
-    
-    public function returnBorrower(Request $request, $id)
-    {
-        $borrower = Borrower::findOrFail($id);
 
-        // Process returned items
-        $returnedItems = $request->input('items', []);
-        foreach ($returnedItems as $itemData) {
-            if (!empty($itemData['returned'])) {
-                $itemName = $itemData['returned']; // Get item name
-                $condition = $itemData['condition']; // Get condition
+            if ($processedItems > 0) {
+                // Check if the borrower has any remaining borrowed items
+                $remainingItems = BorrowedItem::where('borrower_id', $borrowerId)->count();
+                if ($remainingItems === 0) {
+                    Borrower::find($borrowerId)->delete();
+                }
 
-                // Update inventory or save the return status
-                logger("Item: {$itemName}, Condition: {$condition}");
+                DB::commit();
+                return redirect()->back()->with('success', 'Good condition item(s) returned successfully.');
             }
+
+            DB::commit();
+            return redirect()->back()->with('info', 'No items were processed.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'An error occurred while processing the return.');
         }
-
-        // Update the borrower return date
-        $borrower->actual_date_returned = now();
-        $borrower->save();
-
-        return redirect()->route('admin.toga_fines')->with('success', 'Items returned successfully!');
     }
+
 
     public function totalItemReport(Request $request)
     {
@@ -454,15 +548,83 @@ class AdminController extends Controller
 
     public function salesReport(Request $request)
     {
-        // Retrieve filter values
+               // Retrieve filter values
+               $startDate = $request->input('start_date');
+               $endDate = $request->input('end_date');
+               $category = $request->input('category');
+               $paymentMethod = $request->input('payment');
+               $itemName = $request->input('item_name'); // New filter
+           
+               // Query Transactions with filters
+               $transactions = Transaction::with(['user', 'items.item.category' => function($query) use ($category, $itemName) {
+                       // Apply filters to the related items
+                       if ($category) {
+                           $query->where('id', $category);
+                       }
+                       if ($itemName) {
+                           $query->where('item_name', $itemName);
+                       }
+                   }])
+                   ->when($startDate, function ($query, $startDate) {
+                       return $query->whereDate('created_at', '>=', $startDate);
+                   })
+                   ->when($endDate, function ($query, $endDate) {
+                       return $query->whereDate('created_at', '<=', $endDate);
+                   })
+                   ->when($paymentMethod, function ($query, $paymentMethod) {
+                       return $query->where('payment_method', $paymentMethod);
+                   })
+                   ->when($category, function ($query, $category) {
+                       return $query->whereHas('items.item', function ($q) use ($category) {
+                           $q->where('cat_id', $category);
+                       });
+                   })
+                   ->when($itemName, function ($query, $itemName) {
+                       return $query->whereHas('items.item', function ($q) use ($itemName) {
+                           $q->where('item_name', $itemName);
+                       });
+                   })
+                   ->orderBy('created_at', 'desc')
+                   ->get();
+           
+               // Filter items within each transaction based on the applied filters
+               $transactions->each(function ($transaction) use ($category, $itemName) {
+                   $transaction->items = $transaction->items->filter(function ($item) use ($category, $itemName) {
+                       $matches = true;
+                       if ($category && $item->item->cat_id != $category) {
+                           $matches = false;
+                       }
+                       if ($itemName && $item->item->item_name != $itemName) {
+                           $matches = false;
+                       }
+                       return $matches;
+                   });
+               });
+           
+               // Calculate total sales based on the filtered items
+               $totalSales = $transactions->sum(function ($transaction) {
+                   return $transaction->items->sum('total');
+               });
+           
+               // Retrieve categories and items as key-value pairs
+               $categories = Category::pluck('category_name', 'id');
+               $items = Item::orderBy('item_name', 'ASC')->pluck('item_name', 'id');
+    
+        // Pass data to the view
+        return view('admin.sales_report', compact('transactions', 'categories', 'items', 'totalSales', 'paymentMethod', 'category', 'itemName'));
+    }
+
+    public function exportSalesReportPdf(Request $request)
+    {
+        // Retrieve filter values for the report
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
-        $category = $request->input('category');
+        $categoryId = $request->input('category');
         $paymentMethod = $request->input('payment');
         $itemName = $request->input('item_name'); // New filter
     
-        // Query Transactions with filters
-        $transactions = Transaction::with(['items', 'user', 'items.item.category'])
+        // Fetch filtered transactions
+        $transactions = Transaction::with(['items.item.category', 'user'])
             ->when($startDate, function ($query, $startDate) {
                 return $query->whereDate('created_at', '>=', $startDate);
             })
@@ -472,139 +634,122 @@ class AdminController extends Controller
             ->when($paymentMethod, function ($query, $paymentMethod) {
                 return $query->where('payment_method', $paymentMethod);
             })
-            ->when($category, function ($query, $category) {
-                return $query->whereHas('items.item', function ($q) use ($category) {
-                    $q->where('cat_id', $category);
+            ->when($categoryId, function ($query, $categoryId) {
+                return $query->whereHas('items.item', function ($q) use ($categoryId) {
+                    $q->where('cat_id', $categoryId);
                 });
             })
             ->when($itemName, function ($query, $itemName) {
                 return $query->whereHas('items.item', function ($q) use ($itemName) {
-                    $q->where('item_name', $itemName);
+                    $q->where('item_name', 'like', "%$itemName%"); // Flexible search
                 });
             })
             ->orderBy('created_at', 'desc')
             ->get();
+    
+        // **Add Collection-Level Filtering Here**
+        $transactions->each(function ($transaction) use ($categoryId, $itemName) {
+            $transaction->items = $transaction->items->filter(function ($item) use ($categoryId, $itemName) {
+                $matches = true;
+                if ($categoryId && $item->item->cat_id != $categoryId) {
+                    $matches = false;
+                }
+                if ($itemName && stripos($item->item->item_name, $itemName) === false) { // Case-insensitive partial match
+                    $matches = false;
+                }
+                return $matches;
+            });
+        });
+    
+        // **Ensure Transactions with No Items After Filtering Are Removed**
+        $transactions = $transactions->filter(function ($transaction) {
+            return $transaction->items->isNotEmpty();
+        });
     
         // Calculate total sales
         $totalSales = $transactions->sum(function ($transaction) {
             return $transaction->items->sum('total');
         });
     
-        // Retrieve categories and items as key-value pairs
-        $categories = Category::pluck('category_name', 'id');
-        $items = Item::orderBy('item_name', 'ASC')->pluck('item_name', 'id');
+        // Retrieve category name if filter is applied
+        $categoryName = $categoryId 
+            ? Category::find($categoryId)->category_name 
+            : 'All Categories';
     
-        // Pass data to the view
-        return view('admin.sales_report', compact('transactions', 'categories', 'items', 'totalSales', 'paymentMethod', 'category', 'itemName'));
+        // Retrieve item name if filter is applied
+        $itemNameLabel = $itemName 
+            ? $itemName 
+            : 'All Items';
+    
+        // Retrieve admin name
+        $userFullName = Auth::guard('admin')->user()->full_name;
+    
+        // Generate PDF
+        $pdf = Pdf::loadView('admin.sales_report_pdf', compact(
+            'transactions', 
+            'totalSales', 
+            'userFullName', 
+            'paymentMethod', 
+            'categoryName', 
+            'itemNameLabel', 
+            'startDate', 
+            'endDate'
+        ));
+    
+        // View PDF
+        return $pdf->stream('sales_report.pdf');
     }
+    
 
-    public function exportSalesReportPdf(Request $request)
-{
-    // Retrieve filter values for the report
-    $startDate = $request->input('start_date');
-    $endDate = $request->input('end_date');
-    $categoryId = $request->input('category');
-    $paymentMethod = $request->input('payment');
-    $itemName = $request->input('item_name'); // New filter
-
-    // Fetch filtered transactions
-    $transactions = Transaction::with(['items', 'user', 'items.item.category'])
-        ->when($startDate, function ($query, $startDate) {
-            return $query->whereDate('created_at', '>=', $startDate);
-        })
-        ->when($endDate, function ($query, $endDate) {
-            return $query->whereDate('created_at', '<=', $endDate);
-        })
-        ->when($paymentMethod, function ($query, $paymentMethod) {
-            return $query->where('payment_method', $paymentMethod);
-        })
-        ->when($categoryId, function ($query, $categoryId) {
-            return $query->whereHas('items.item', function ($q) use ($categoryId) {
+    public function exportSalesReportExcel(Request $request)
+    {
+        // Get filter values
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $selectedPaymentMethod = $request->input('payment');
+        $categoryId = $request->input('category');
+        $itemName = $request->input('item_name'); // New filter
+    
+        // Build the query
+        $query = Transaction::query();
+    
+        // Date Range Filtering
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+        } elseif ($startDate) {
+            $query->where('created_at', '>=', $startDate . ' 00:00:00');
+        } elseif ($endDate) {
+            $query->where('created_at', '<=', $endDate . ' 23:59:59');
+        }
+    
+        // Payment Method Filtering
+        if ($selectedPaymentMethod) {
+            $query->where('payment_method', $selectedPaymentMethod);
+        }
+    
+        // Category Filtering
+        if ($categoryId) {
+            $query->whereHas('items.item', function ($q) use ($categoryId) {
                 $q->where('cat_id', $categoryId);
             });
-        })
-        ->when($itemName, function ($query, $itemName) {
-            return $query->whereHas('items.item', function ($q) use ($itemName) {
-                $q->where('item_name', 'like', "%$itemName%"); // Flexible search
+        }
+    
+        // Item Name Filtering
+        if ($itemName) {
+            $query->whereHas('items.item', function ($q) use ($itemName) {
+                $q->where('item_name', $itemName);
             });
-        })
-        ->orderBy('created_at', 'desc')
-        ->get();
-
-    // Calculate total sales
-    $totalSales = $transactions->sum(function ($transaction) {
-        return $transaction->items->sum('total');
-    });
-
-    // Retrieve category name if filter is applied
-    $categoryName = $categoryId 
-        ? Category::find($categoryId)->category_name 
-        : 'All Categories';
-
-    // Retrieve item name if filter is applied
-    $itemNameLabel = $itemName 
-        ? $itemName 
-        : 'All Items';
-
-    // Retrieve admin name
-    $userFullName = Auth::guard('admin')->user()->full_name;
-
-    // Generate PDF
-    $pdf = Pdf::loadView('accounting.sales_report_pdf', compact('transactions', 'totalSales', 'userFullName', 'paymentMethod', 'categoryName', 'itemNameLabel', 'startDate', 'endDate'));
-
-    // View PDF
-    return $pdf->stream('sales_report.pdf');
-}
-
-public function exportSalesReportExcel(Request $request)
-{
-    // Get filter values
-    $startDate = $request->input('start_date');
-    $endDate = $request->input('end_date');
-    $selectedPaymentMethod = $request->input('payment');
-    $categoryId = $request->input('category');
-    $itemName = $request->input('item_name'); // New filter
-
-    // Build the query
-    $query = Transaction::query();
-
-    // Date Range Filtering
-    if ($startDate && $endDate) {
-        $query->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
-    } elseif ($startDate) {
-        $query->where('created_at', '>=', $startDate . ' 00:00:00');
-    } elseif ($endDate) {
-        $query->where('created_at', '<=', $endDate . ' 23:59:59');
+        }
+    
+        // Load relationships and get results
+        $transactions = $query->with(['items.item.category', 'user'])->get();
+    
+        // Pass filter parameters to SalesReportExport
+        $categoryName = $categoryId ? Category::find($categoryId)->category_name : 'All Categories';
+        $itemNameLabel = $itemName ? $itemName : 'All Items'; // Pass the itemName string directly
+    
+        return Excel::download(new SalesReportExportAdmin($transactions, $startDate, $endDate, $categoryName, $selectedPaymentMethod, $itemName, $categoryId), 'sales_report.xlsx');
     }
-
-    // Payment Method Filtering
-    if ($selectedPaymentMethod) {
-        $query->where('payment_method', $selectedPaymentMethod);
-    }
-
-    // Category Filtering
-    if ($categoryId) {
-        $query->whereHas('items.item', function ($q) use ($categoryId) {
-            $q->where('cat_id', $categoryId);
-        });
-    }
-
-    // Item Name Filtering (Keep this to filter transactions)
-    if ($itemName) {
-        $query->whereHas('items.item', function ($q) use ($itemName) {
-            $q->where('item_name', $itemName);
-        });
-    }
-
-    // Load relationships and get results
-    $transactions = $query->with(['items', 'items.item.category', 'user'])->get();
-
-    // Pass filter parameters to SalesReportExport
-    $categoryName = $categoryId ? Category::find($categoryId)->category_name : 'All Categories';
-    $itemNameLabel = $itemName ? $itemName : 'All Items'; // Pass the itemName string directly
-
-    return Excel::download(new SalesReportExportAdmin($transactions, $startDate, $endDate, $categoryName, $selectedPaymentMethod, $itemName), 'sales_report.xlsx');
-}
 
     
     public function damageItemReport(Request $request)

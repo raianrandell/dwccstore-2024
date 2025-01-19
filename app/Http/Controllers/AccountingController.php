@@ -109,6 +109,20 @@ class AccountingController extends Controller
 
         public function accountinglogout(Request $request)
         {
+            // Get the logged-in accounting's ID
+            $userId = Auth::guard('accounting')->user()->id;
+        
+            if ($userId) {
+                // Log the "Not Active" status in the user logs table
+                \DB::table('user_logs')->insert([
+                    'user_id' => $userId, // The ID of the logged-in user
+                    'activity' => 'Offline', // Activity description
+                    'ip_address' => $request->ip(), // Capture the user's IP address
+                    'created_at' => now(), // Record the current timestamp
+                    'updated_at' => now(),
+                ]);
+            }
+
             Auth::logout();
         
             $request->session()->invalidate();
@@ -120,8 +134,9 @@ class AccountingController extends Controller
         public function chargeTransaction()
         {
             $transactions = Transaction::where('payment_method', 'credit')->get();
+            $users = User::with(['logs'])->get();
         
-            return view('accounting.charge_transaction', compact('transactions'));
+            return view('accounting.charge_transaction', compact('transactions','users'));
         } 
         public function getTransactionDetails($transactionId)
     {
@@ -225,61 +240,23 @@ class AccountingController extends Controller
 
         public function salesReport(Request $request)
         {
-            // Retrieve filter values
-            $startDate = $request->input('start_date');
-            $endDate = $request->input('end_date');
-            $category = $request->input('category');
-            $paymentMethod = $request->input('payment');
-            $itemName = $request->input('item_name'); // New filter
-        
-            // Query Transactions with filters
-            $transactions = Transaction::with(['items', 'user', 'items.item.category'])
-                ->when($startDate, function ($query, $startDate) {
-                    return $query->whereDate('created_at', '>=', $startDate);
-                })
-                ->when($endDate, function ($query, $endDate) {
-                    return $query->whereDate('created_at', '<=', $endDate);
-                })
-                ->when($paymentMethod, function ($query, $paymentMethod) {
-                    return $query->where('payment_method', $paymentMethod);
-                })
-                ->when($category, function ($query, $category) {
-                    return $query->whereHas('items.item', function ($q) use ($category) {
-                        $q->where('cat_id', $category);
-                    });
-                })
-                ->when($itemName, function ($query, $itemName) {
-                    return $query->whereHas('items.item', function ($q) use ($itemName) {
-                        $q->where('item_name', $itemName);
-                    });
-                })
-                ->orderBy('created_at', 'desc')
-                ->get();
-        
-            // Calculate total sales
-            $totalSales = $transactions->sum(function ($transaction) {
-                return $transaction->items->sum('total');
-            });
-        
-            // Retrieve categories and items as key-value pairs
-            $categories = Category::pluck('category_name', 'id');
-            $items = Item::orderBy('item_name', 'ASC')->pluck('item_name', 'id');
-        
-            // Pass data to the view
-            return view('accounting.sales_report', compact('transactions', 'categories', 'items', 'totalSales', 'paymentMethod', 'category', 'itemName'));
-        }
-
-        public function exportSalesReportPdf(Request $request)
-    {
-        // Retrieve filter values for the report
+                    // Retrieve filter values
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
-        $categoryId = $request->input('category');
+        $category = $request->input('category');
         $paymentMethod = $request->input('payment');
         $itemName = $request->input('item_name'); // New filter
-
-        // Fetch filtered transactions
-        $transactions = Transaction::with(['items', 'user', 'items.item.category'])
+    
+        // Query Transactions with filters
+        $transactions = Transaction::with(['user', 'items.item.category' => function($query) use ($category, $itemName) {
+                // Apply filters to the related items
+                if ($category) {
+                    $query->where('id', $category);
+                }
+                if ($itemName) {
+                    $query->where('item_name', $itemName);
+                }
+            }])
             ->when($startDate, function ($query, $startDate) {
                 return $query->whereDate('created_at', '>=', $startDate);
             })
@@ -289,93 +266,183 @@ class AccountingController extends Controller
             ->when($paymentMethod, function ($query, $paymentMethod) {
                 return $query->where('payment_method', $paymentMethod);
             })
-            ->when($categoryId, function ($query, $categoryId) {
-                return $query->whereHas('items.item', function ($q) use ($categoryId) {
-                    $q->where('cat_id', $categoryId);
+            ->when($category, function ($query, $category) {
+                return $query->whereHas('items.item', function ($q) use ($category) {
+                    $q->where('cat_id', $category);
                 });
             })
             ->when($itemName, function ($query, $itemName) {
                 return $query->whereHas('items.item', function ($q) use ($itemName) {
-                    $q->where('item_name', 'like', "%$itemName%"); // Flexible search
+                    $q->where('item_name', $itemName);
                 });
             })
             ->orderBy('created_at', 'desc')
             ->get();
-
-        // Calculate total sales
+    
+        // Filter items within each transaction based on the applied filters
+        $transactions->each(function ($transaction) use ($category, $itemName) {
+            $transaction->items = $transaction->items->filter(function ($item) use ($category, $itemName) {
+                $matches = true;
+                if ($category && $item->item->cat_id != $category) {
+                    $matches = false;
+                }
+                if ($itemName && $item->item->item_name != $itemName) {
+                    $matches = false;
+                }
+                return $matches;
+            });
+        });
+    
+        // Calculate total sales based on the filtered items
         $totalSales = $transactions->sum(function ($transaction) {
             return $transaction->items->sum('total');
         });
-
-        // Retrieve category name if filter is applied
-        $categoryName = $categoryId 
-            ? Category::find($categoryId)->category_name 
-            : 'All Categories';
-
-        // Retrieve item name if filter is applied
-        $itemNameLabel = $itemName 
-            ? $itemName 
-            : 'All Items';
-
-        // Retrieve cashier name
-        $userFullName = Auth::guard('accounting')->user()->full_name;
-
-        // Generate PDF
-        $pdf = Pdf::loadView('accounting.sales_report_pdf', compact('transactions', 'totalSales', 'userFullName', 'paymentMethod', 'categoryName', 'itemNameLabel', 'startDate', 'endDate'));
-
-        // View PDF
-        return $pdf->stream('sales_report.pdf');
-    }
-
-    public function exportSalesReportExcel(Request $request)
-    {
-        // Get filter values
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-        $selectedPaymentMethod = $request->input('payment');
-        $categoryId = $request->input('category');
-        $itemName = $request->input('item_name'); // New filter
     
-        // Build the query
-        $query = Transaction::query();
-    
-        // Date Range Filtering
-        if ($startDate && $endDate) {
-            $query->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
-        } elseif ($startDate) {
-            $query->where('created_at', '>=', $startDate . ' 00:00:00');
-        } elseif ($endDate) {
-            $query->where('created_at', '<=', $endDate . ' 23:59:59');
+        // Retrieve categories and items as key-value pairs
+        $categories = Category::pluck('category_name', 'id');
+        $items = Item::orderBy('item_name', 'ASC')->pluck('item_name', 'id');
+        
+            // Pass data to the view
+            return view('accounting.sales_report', compact('transactions', 'categories', 'items', 'totalSales', 'paymentMethod', 'category', 'itemName'));
         }
-    
-        // Payment Method Filtering
-        if ($selectedPaymentMethod) {
-            $query->where('payment_method', $selectedPaymentMethod);
-        }
-    
-        // Category Filtering
-        if ($categoryId) {
-            $query->whereHas('items.item', function ($q) use ($categoryId) {
-                $q->where('cat_id', $categoryId);
+
+        public function exportSalesReportPdf(Request $request)
+        {
+            // Retrieve filter values for the report
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
+            $categoryId = $request->input('category');
+            $paymentMethod = $request->input('payment');
+            $itemName = $request->input('item_name'); // New filter
+        
+            // Fetch filtered transactions
+            $transactions = Transaction::with(['items.item.category', 'user'])
+                ->when($startDate, function ($query, $startDate) {
+                    return $query->whereDate('created_at', '>=', $startDate);
+                })
+                ->when($endDate, function ($query, $endDate) {
+                    return $query->whereDate('created_at', '<=', $endDate);
+                })
+                ->when($paymentMethod, function ($query, $paymentMethod) {
+                    return $query->where('payment_method', $paymentMethod);
+                })
+                ->when($categoryId, function ($query, $categoryId) {
+                    return $query->whereHas('items.item', function ($q) use ($categoryId) {
+                        $q->where('cat_id', $categoryId);
+                    });
+                })
+                ->when($itemName, function ($query, $itemName) {
+                    return $query->whereHas('items.item', function ($q) use ($itemName) {
+                        $q->where('item_name', 'like', "%$itemName%"); // Flexible search
+                    });
+                })
+                ->orderBy('created_at', 'desc')
+                ->get();
+        
+            // **Add Collection-Level Filtering Here**
+            $transactions->each(function ($transaction) use ($categoryId, $itemName) {
+                $transaction->items = $transaction->items->filter(function ($item) use ($categoryId, $itemName) {
+                    $matches = true;
+                    if ($categoryId && $item->item->cat_id != $categoryId) {
+                        $matches = false;
+                    }
+                    if ($itemName && stripos($item->item->item_name, $itemName) === false) { // Case-insensitive partial match
+                        $matches = false;
+                    }
+                    return $matches;
+                });
             });
-        }
-    
-        // Item Name Filtering (Keep this to filter transactions)
-        if ($itemName) {
-            $query->whereHas('items.item', function ($q) use ($itemName) {
-                $q->where('item_name', $itemName);
+        
+            // **Ensure Transactions with No Items After Filtering Are Removed**
+            $transactions = $transactions->filter(function ($transaction) {
+                return $transaction->items->isNotEmpty();
             });
+        
+            // Calculate total sales
+            $totalSales = $transactions->sum(function ($transaction) {
+                return $transaction->items->sum('total');
+            });
+        
+            // Retrieve category name if filter is applied
+            $categoryName = $categoryId 
+                ? Category::find($categoryId)->category_name 
+                : 'All Categories';
+        
+            // Retrieve item name if filter is applied
+            $itemNameLabel = $itemName 
+                ? $itemName 
+                : 'All Items';
+        
+            // Retrieve accounting name
+            $userFullName = Auth::guard('accounting')->user()->full_name;
+        
+            // Generate PDF
+            $pdf = Pdf::loadView('accounting.sales_report_pdf', compact(
+                'transactions', 
+                'totalSales', 
+                'userFullName', 
+                'paymentMethod', 
+                'categoryName', 
+                'itemNameLabel', 
+                'startDate', 
+                'endDate'
+            ));
+        
+            // View PDF
+            return $pdf->stream('sales_report.pdf');
+        }
+        
+    
+        public function exportSalesReportExcel(Request $request)
+        {
+            // Get filter values
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
+            $selectedPaymentMethod = $request->input('payment');
+            $categoryId = $request->input('category');
+            $itemName = $request->input('item_name'); // New filter
+        
+            // Build the query
+            $query = Transaction::query();
+        
+            // Date Range Filtering
+            if ($startDate && $endDate) {
+                $query->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+            } elseif ($startDate) {
+                $query->where('created_at', '>=', $startDate . ' 00:00:00');
+            } elseif ($endDate) {
+                $query->where('created_at', '<=', $endDate . ' 23:59:59');
+            }
+        
+            // Payment Method Filtering
+            if ($selectedPaymentMethod) {
+                $query->where('payment_method', $selectedPaymentMethod);
+            }
+        
+            // Category Filtering
+            if ($categoryId) {
+                $query->whereHas('items.item', function ($q) use ($categoryId) {
+                    $q->where('cat_id', $categoryId);
+                });
+            }
+        
+            // Item Name Filtering
+            if ($itemName) {
+                $query->whereHas('items.item', function ($q) use ($itemName) {
+                    $q->where('item_name', $itemName);
+                });
+            }
+        
+            // Load relationships and get results
+            $transactions = $query->with(['items.item.category', 'user'])->get();
+        
+            // Pass filter parameters to SalesReportExport
+            $categoryName = $categoryId ? Category::find($categoryId)->category_name : 'All Categories';
+            $itemNameLabel = $itemName ? $itemName : 'All Items'; // Pass the itemName string directly
+        
+            return Excel::download(new SalesReportExportAccounting($transactions, $startDate, $endDate, $categoryName, $selectedPaymentMethod, $itemName, $categoryId), 'sales_report.xlsx');
         }
     
-        // Load relationships and get results
-        $transactions = $query->with(['items', 'items.item.category', 'user'])->get();
-    
-        // Pass filter parameters to SalesReportExport
-        $categoryName = $categoryId ? Category::find($categoryId)->category_name : 'All Categories';
-        $itemNameLabel = $itemName ? $itemName : 'All Items'; // Pass the itemName string directly
-    
-        return Excel::download(new SalesReportExportAccounting($transactions, $startDate, $endDate, $categoryName, $selectedPaymentMethod, $itemName), 'sales_report.xlsx');
-    }
 
     public function returnReport(Request $request)
     {

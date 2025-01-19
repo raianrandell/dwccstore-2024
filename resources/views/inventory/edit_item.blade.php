@@ -291,6 +291,17 @@
                         </div>
                     @enderror
                 </div>
+                <div class="col-md-2">
+                    <!-- Supplier -->
+                    <label for="supplier" class="form-label">Supplier</label>
+                    <input type="text" class="form-control @error('supplier_info') is-invalid @enderror" id="supplier" name="supplier_info" placeholder="Enter supplier name" value="{{ old('supplier_info', $item->supplier_info) }}">
+                    @error('supplier_info')
+                        <div class="invalid-feedback">
+                            {{ $message }}
+                        </div>
+                    @enderror
+                </div>
+                
 
                 <div class="col-md-2">
                     <!-- Is Perishable? -->

@@ -14,16 +14,16 @@
             </a>
             <!-- Transactions Dropdown -->
             <a class="nav-link collapsed text-white 
-                {{ request()->routeIs('cashier.sales') ||  request()->routeIs('cashier.services') || request()->routeIs('cashier.sales_history') || request()->routeIs('cashier.services_history') || request()->routeIs('cashier.void_records') || request()->routeIs('cashier.credit') || request()->routeIs('cashier.fines') || request()->routeIs('cashier.fines_history') || request()->routeIs('cashier.returns') ? 'active' : '' }}" 
+                {{ request()->routeIs('cashier.sales') ||  request()->routeIs('cashier.services') || request()->routeIs('cashier.sales_history') || request()->routeIs('cashier.services_history') || request()->routeIs('cashier.void_records') || request()->routeIs('cashier.credit') || request()->routeIs('cashier.fines_transaction') || request()->routeIs('cashier.fines_history') || request()->routeIs('cashier.returns') ? 'active' : '' }}" 
                 href="#" data-bs-toggle="collapse" 
                 data-bs-target="#collapseTransactions" 
-                aria-expanded="{{ request()->routeIs('cashier.sales') ||  request()->routeIs('cashier.services') || request()->routeIs('cashier.sales_history') || request()->routeIs('cashier.services_history')||request()->routeIs('cashier.void_records') || request()->routeIs('cashier.credit') || request()->routeIs('cashier.fines') || request()->routeIs('cashier.fines_history') || request()->routeIs('cashier.returns') ? 'true' : 'false' }}" 
+                aria-expanded="{{ request()->routeIs('cashier.sales') ||  request()->routeIs('cashier.services') || request()->routeIs('cashier.sales_history') || request()->routeIs('cashier.services_history')||request()->routeIs('cashier.void_records') || request()->routeIs('cashier.credit') || request()->routeIs('cashier.fines_transaction') || request()->routeIs('cashier.fines_history') || request()->routeIs('cashier.returns') ? 'true' : 'false' }}" 
                 aria-controls="collapseTransactions">
                 <div class="sb-nav-link-icon text-white"><i class="fas fa-chart-line"></i></div>
                 Transactions
                 <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down text-white"></i></div>
             </a>
-            <div class="collapse {{ request()->routeIs('cashier.sales') || request()->routeIs('cashier.services') || request()->routeIs('cashier.sales_history') || request()->routeIs('cashier.services_history') || request()->routeIs('cashier.void_records') || request()->routeIs('cashier.credit') || request()->routeIs('cashier.fines') || request()->routeIs('cashier.fines_history') || request()->routeIs('cashier.returns') ? 'show' : '' }}" id="collapseTransactions" aria-labelledby="headingTransactions" data-bs-parent="#sidenavAccordion">
+            <div class="collapse {{ request()->routeIs('cashier.sales') || request()->routeIs('cashier.services') || request()->routeIs('cashier.sales_history') || request()->routeIs('cashier.services_history') || request()->routeIs('cashier.void_records') || request()->routeIs('cashier.credit') || request()->routeIs('cashier.fines_transaction') || request()->routeIs('cashier.fines_history') || request()->routeIs('cashier.returns') ? 'show' : '' }}" id="collapseTransactions" aria-labelledby="headingTransactions" data-bs-parent="#sidenavAccordion">
                 <nav class="sb-sidenav-menu-nested">
                     <a class="nav-link text-white {{ request()->routeIs('cashier.sales') ? 'active' : '' }}" href="{{ route('cashier.sales') }}">
                         <div class="sb-nav-link-icon text-white"><i class="fas fa-cash-register"></i></div>
@@ -51,7 +51,7 @@
                         <div class="sb-nav-link-icon text-white"><i class="fas fa-credit-card"></i></div>
                         Credit
                     </a>
-                    <a class="nav-link text-white {{ request()->routeIs('cashier.fines') ? 'active' : '' }}" href="{{ route('cashier.fines') }}">
+                    <a class="nav-link text-white {{ request()->routeIs('cashier.fines_transaction') ? 'active' : '' }}" href="{{ route('cashier.fines_transaction') }}">
                         <div class="sb-nav-link-icon text-white"><i class="fas fa-coins"></i></div>
                         Fines
                     </a>

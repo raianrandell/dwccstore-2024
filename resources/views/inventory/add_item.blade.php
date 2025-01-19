@@ -267,7 +267,16 @@
                         </div>
                     @enderror
                 </div>
-                
+                <div class="col-md-2">
+                    <!-- Supplier -->
+                    <label for="supplier" class="form-label">Supplier</label>
+                    <input type="text" class="form-control @error('supplier_info') is-invalid @enderror" id="supplier" name="supplier_info" placeholder="Enter supplier name" value="{{ old('supplier') }}">
+                    @error('supplier_info')
+                        <div class="invalid-feedback">
+                            {{ $message }}
+                        </div>
+                    @enderror
+                </div>
                 <div class="col-md-2">
                     <!-- Is Perishable? -->
                     <label class="form-label">Is Perishable?</label>
@@ -290,7 +299,7 @@
                     @enderror
                 </div>
                 
-                <div class="col-md-3" id="expirationDateContainer" style="display: none;">
+                <div class="col-md-2" id="expirationDateContainer" style="display: none;">
                     <!-- Expiration Date -->
                     <label for="expirationDate" class="form-label">Expiration Date&nbsp;&nbsp;<span class="text-danger">*</span></label>
                     <input type="date" class="form-control @error('expiration_date') is-invalid @enderror" id="expirationDate" name="expiration_date" value="{{ old('expiration_date') }}">

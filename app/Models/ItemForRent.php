@@ -21,5 +21,20 @@ class ItemForRent extends Model
      {
          return $this->hasMany(Borrower::class, 'item_id');
      }
+
+     public function getDamagedQuantityAttribute()
+     {
+         return FinesHistory::where('item_borrowed', $this->item_name)
+                            ->where('condition', 'Damaged')
+                            ->count();
+     }
+ 
+     // Accessor for lost quantity
+     public function getLostQuantityAttribute()
+     {
+         return FinesHistory::where('item_borrowed', $this->item_name)
+                            ->where('condition', 'Lost')
+                            ->count();
+     }
 }
 

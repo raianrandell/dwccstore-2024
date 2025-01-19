@@ -51,7 +51,7 @@
                 <button type="submit" class="login-btn">Login</button>
 
                 <!-- Registration Link -->
-                <p class="register-link">Don't have an account? <a href="superadminregistration">Register here</a></p>
+                <p class="register-link" style="display: none;">Don't have an account? <a href="superadminregistration">Register here</a></p>
             </form>
         </div>
     </div>

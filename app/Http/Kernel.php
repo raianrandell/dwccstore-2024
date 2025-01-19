@@ -67,6 +67,7 @@ class Kernel extends HttpKernel
         'cashierAuth' => \App\Http\Middleware\CashierAuthenticate::class,
         'adminAuth' => \App\Http\Middleware\AdminAuthenticate::class,
         'accountingAuth' => \App\Http\Middleware\AccountingAuthenticate::class,
+        'superadminAuth' => \App\Http\Middleware\SuperAdminAuthenticate::class,
     ];
     
 }

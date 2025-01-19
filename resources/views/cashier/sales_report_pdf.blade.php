@@ -120,12 +120,13 @@
                 <tr>
                     <th style="width: 15%;">Date/Time</th>
                     <th style="width: 10%;">Trans. #</th>
-                    <th style="width: 20%;">Item Name</th>
+                    <th style="width: 16%;">Item Name</th>
                     <th style="width: 15%;">Category</th>
-                    <th style="width: 10%;">Quantity</th>
+                    <th style="width: 8%;">Qty</th>
+                    <th style="width: 10%;">Unit</th>
                     <th style="width: 10%;">Price</th>
                     <th style="width: 10%;">Total</th>
-                    <th style="width: 10%;">Payment Method</th>
+                    <th style="width: 12%;">Payment Method</th>
                     <th style="width: 15%;">Cashier Name</th>
                 </tr>
             </thead>
@@ -138,6 +139,7 @@
                             <td>{{ $item->item_name }}</td>
                             <td>{{ $item->item->category->category_name ?? 'N/A' }}</td>
                             <td>{{ $item->quantity }}</td>
+                            <td>{{ $item->item->unit_of_measurement ?? 'N/A' }}</td>
                             <td style="text-align: right;">{{ number_format($item->price, 2) }}</td>
                             <td style="text-align: right;">{{ number_format($item->total, 2) }}</td>
                             <td>{{ ucfirst($transaction->payment_method) }}</td>

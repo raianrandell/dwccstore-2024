@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use App\Models\UserLog;
 use Session;
 
 class SuperAdminController extends Controller
@@ -95,7 +96,7 @@ class SuperAdminController extends Controller
     //superadmin user_management function 
     public function user_management()
     {
-        $users = User::all(); // Retrieve all users
+        $users = User::with(['logs'])->get(); // Retrieve all users
         $userId = Session::get('loginId');
     
         if ($userId) {

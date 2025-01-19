@@ -115,8 +115,9 @@ class InventoryController extends Controller
         $totalItems = Item::count();
         $totalCategories = Category::count();
         $lowStockItems = Item::where('status', 'Low Stock')->where('qtyInStock', '>', 0)->count();
+        $users = User::with(['logs'])->get();
         
-        return view('inventory.inventory_dashboard', compact('totalItems', 'totalCategories', 'lowStockItems'));
+        return view('inventory.inventory_dashboard', compact('totalItems', 'totalCategories', 'lowStockItems','users'));
     }
 
     public function updateItem(Request $request, $id)
@@ -137,6 +138,7 @@ class InventoryController extends Controller
             'size' => 'nullable|string|max:50',
             'weight' => 'nullable|numeric|min:0',
             'is_perishable' => 'required|boolean',
+            'supplier_info' => 'nullable|string|max:255',
             'expiration_date' => 'nullable|date|after:today|required_if:is_perishable,1',
         ], [
             'expiration_date.required_if' => 'Expiration date is required for perishable items.',
@@ -158,6 +160,7 @@ class InventoryController extends Controller
         $item->size = $validatedData['size'];
         $item->weight = $validatedData['weight'];
         $item->is_perishable = $validatedData['is_perishable'];
+        $item->supplier_info = $validatedData['supplier_info'];
     
         // Handle expiration date
         if ($validatedData['is_perishable']) {
@@ -192,6 +195,20 @@ class InventoryController extends Controller
     // Inventory-specific logout function
     public function inventorylogout(Request $request)
     {
+         // Get the logged-in inventory's ID
+         $userId = Auth::guard('inventory')->user()->id;
+        
+         if ($userId) {
+             // Log the "Not Active" status in the user logs table
+             \DB::table('user_logs')->insert([
+                 'user_id' => $userId, // The ID of the logged-in user
+                 'activity' => 'Offline', // Activity description
+                 'ip_address' => $request->ip(), // Capture the user's IP address
+                 'created_at' => now(), // Record the current timestamp
+                 'updated_at' => now(),
+             ]);
+         }
+
         Auth::logout(); // Optional if you want a full logout
 
         $request->session()->invalidate();
@@ -302,6 +319,7 @@ class InventoryController extends Controller
             'weight' => 'nullable|numeric|min:0',
             'is_perishable' => 'required|boolean',
             'expiration_date' => 'nullable|date|after:today',
+            'supplier_info' => 'nullable|string|max:255',
         ]);
     
         // Handle perishable items
@@ -330,7 +348,7 @@ class InventoryController extends Controller
             'base_price' => $validatedData['base_price'],
             'selling_price' => $validatedData['selling_price'],
             'expiration_date' => $validatedData['is_perishable'] ? $validatedData['expiration_date'] : null,
-            'supplier_info' => null, // Adjust as needed
+            'supplier_info' => $validatedData['supplier_info'], // Store supplier info
             'status' => $status, // Set status based on stock levels
             'size' => $validatedData['size'],
             'color' => $validatedData['color'],
@@ -365,6 +383,17 @@ class InventoryController extends Controller
     
         // Find the item
         $item = Item::findOrFail($id);
+    
+        // Validation for price mismatch
+        if ($validatedData['price_update'] === 'yes') {
+            if (
+                isset($validatedData['new_base_price']) && $validatedData['new_base_price'] == $item->base_price ||
+                isset($validatedData['new_selling_price']) && $validatedData['new_selling_price'] == $item->selling_price
+            ) {
+                echo "<script>alert('The new base price or selling price must be different from the old prices. Please try again.'); window.history.back();</script>";
+                exit;
+            }
+        }
     
         // Store the old expiration date before making any changes
         $oldExpirationDate = $item->expiration_date;
@@ -482,6 +511,7 @@ class InventoryController extends Controller
             }
         }
     }
+    
     
 
     public function getSectionCategories($id)
@@ -1097,6 +1127,9 @@ public function getCategoryItems($categoryId)
             'selling_price' => $sourceItem->selling_price,
             'transferred_by' => Auth::guard('inventory')->user()->full_name,
         ]);
+
+            // Delete the source item from the database
+            $sourceItem->delete();
     
         // Redirect back with success message
         return redirect()->route('inventory.stockmanagement')->with('success', 'Item transferred successfully.');
@@ -1342,7 +1375,9 @@ public function getCategoryItems($categoryId)
         return response()->json([
             'message' => "Successfully added $addedQuantity to {$item->item_name}.",
             'total_quantity' => $item->total_quantity,
+            'remaining_stock' => $item->total_quantity - $item->quantity_borrowed - $item->damaged_quantity - $item->lost_quantity
         ]);
+        
     }
     public function getItem($id)
     {

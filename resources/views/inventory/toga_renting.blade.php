@@ -52,10 +52,12 @@
         <table id="datatablesSimple" class="table table-bordered table-striped">
             <thead>
                 <tr>
-                    <th>Item Name For Rent</th>
+                    <th>Item For Rent</th>
                     <th>Total Quantity</th>
-                    <th>Remaining Stock Available</th>
+                    <th>Remaining Stock Available (Good)</th>
                     <th>Quantity Borrowed</th>
+                    <th>Return Damaged Item</th>
+                    <th>Return Lost Item</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -64,11 +66,13 @@
                 <tr>
                     <td>{{ $item->item_name }}</td>
                     <td>{{ $item->total_quantity }}</td>
-                    <td>{{ $item->total_quantity - $item->quantity_borrowed }}</td>
+                    <td>{{ $item->total_quantity - $item->quantity_borrowed - $item->damaged_quantity - $item->lost_quantity }}</td>
                     <td>{{ $item->quantity_borrowed }}</td>
+                    <td>{{ $item->damaged_quantity }}</td>
+                    <td>{{ $item->lost_quantity }}</td>
                     <td>
                         <button 
-                            type="button" 
+                            type="button" title="Add Stock"
                             class="btn btn-success btn-sm rounded-circle open-modal" 
                             data-id="{{ $item->id }}" 
                             data-name="{{ $item->item_name }}" 
@@ -214,63 +218,63 @@
             }
         });
     });
-
     $('#saveQuantityButton').on('click', function () {
-        const itemId = $('#modalItemId').val();
-        const addedQuantity = $('#addQuantityInput').val();
+    const itemId = $('#modalItemId').val();
+    const addedQuantity = $('#addQuantityInput').val();
 
-        if (addedQuantity && addedQuantity > 0) {
-            $.ajax({
-                url: `/inventory/items/${itemId}/add-stock`,
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    amount: addedQuantity
-                },
-                success: function (response) {
-                    // Reset the input field
-                    $('#addQuantityInput').val('');
+    if (addedQuantity && addedQuantity > 0) {
+        $.ajax({
+            url: `/inventory/items/${itemId}/add-stock`,
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                amount: addedQuantity
+            },
+            success: function (response) {
+                // Reset the input field
+                $('#addQuantityInput').val('');
 
-                    // Close the modal
-                    $('#addQuantityModal').modal('hide');
+                // Close the modal
+                $('#addQuantityModal').modal('hide');
 
-                    // Show success message dynamically
-                    const successAlert = `
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            ${response.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>`;
-                    $('#alerts-container').html(successAlert);
+                // Show success message dynamically
+                const successAlert = `
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        ${response.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>`;
+                $('#alerts-container').html(successAlert);
 
-                    // Remove the alert after 2 seconds
-                    setTimeout(() => {
-                        $('.alert').alert('close');
-                    }, 2000);
+                // Remove the alert after 2 seconds
+                setTimeout(() => {
+                    $('.alert').alert('close');
+                }, 2000);
 
-                    // Update the table row with the new total quantity
-                    const row = $(`button[data-id="${itemId}"]`).closest('tr');
-                    row.find('td').eq(1).text(response.total_quantity); // Update "Total Quantity"
-                    row.find('td').eq(2).text(response.total_quantity - parseInt(row.find('td').eq(3).text())); // Update "Remaining Stock"
-                },
-                error: function (xhr) {
-                    // Show error message dynamically
-                    const errorAlert = `
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            ${xhr.responseJSON.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>`;
-                    $('#alerts-container').html(errorAlert);
+                // Update the table row dynamically
+                const row = $(`button[data-id="${itemId}"]`).closest('tr');
+                row.find('td').eq(1).text(response.total_quantity); // Update "Total Quantity"
+                row.find('td').eq(2).text(response.remaining_stock); // Update "Remaining Stock Available (Good)"
+            },
+            error: function (xhr) {
+                // Show error message dynamically
+                const errorAlert = `
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        ${xhr.responseJSON.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>`;
+                $('#alerts-container').html(errorAlert);
 
-                    // Remove the alert after 2 seconds
-                    setTimeout(() => {
-                        $('.alert').alert('close');
-                    }, 2000);
-                }
-            });
-        } else {
-            alert('Please enter a valid quantity.');
-        }
-    });
+                // Remove the alert after 2 seconds
+                setTimeout(() => {
+                    $('.alert').alert('close');
+                }, 2000);
+            }
+        });
+    } else {
+        alert('Please enter a valid quantity.');
+    }
+});
+
 
     //this is for adding item for rent 
     document.addEventListener('DOMContentLoaded', () => {

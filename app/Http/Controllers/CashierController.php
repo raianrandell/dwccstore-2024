@@ -14,6 +14,7 @@ use App\Models\VoidRecords;
 use Session;
 use Carbon\Carbon;
 use App\Models\Borrower;
+use App\Models\BorrowedItem;
 use App\Models\ItemForRent;
 use App\Models\FinesHistory;
 use App\Models\ReturnedItem;
@@ -27,6 +28,8 @@ use PDF;
 use App\Exports\VoidItemReportExport;
 use App\Exports\SalesReportExport;
 use Illuminate\Support\Facades\Validator;
+use App\Models\UserLog;
+
 
 
 class CashierController extends Controller
@@ -146,6 +149,8 @@ class CashierController extends Controller
             $dailySales[$i] = $monthlySales;
             $dailySales['All'] = array_merge($dailySales['All'], $monthlySales);
         }
+
+        $users = User::with(['logs'])->get();
     
         return view('cashier.cashier_dashboard', [
             'totalSalesToday' => $totalSalesToday,
@@ -154,6 +159,7 @@ class CashierController extends Controller
             'creditSalesToday' => $creditSalesToday,
             'months' => $months,
             'dailySales' => $dailySales,
+            'users',
         ]);
     }
     /**
@@ -161,11 +167,27 @@ class CashierController extends Controller
      */
     public function cashierlogout(Request $request)
     {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return redirect()->route('cashier_login')->with('success', 'You have been logged out successfully.');
+         // Get the logged-in cashier's ID
+         $userId = Auth::guard('cashier')->user()->id;
+    
+         if ($userId) {
+             // Log the "Not Active" status in the user logs table
+             \DB::table('user_logs')->insert([
+                 'user_id' => $userId, // The ID of the logged-in user
+                 'activity' => 'Offline', // Activity description
+                 'ip_address' => $request->ip(), // Capture the user's IP address
+                 'created_at' => now(), // Record the current timestamp
+                 'updated_at' => now(),
+             ]);
+         }
+     
+         // Log out the user and destroy the session
+         Auth::logout();
+         $request->session()->invalidate();
+         $request->session()->regenerateToken();
+     
+         // Redirect to the cashier login page with a success message
+         return redirect()->route('cashier_login')->with('success', 'You have been logged out successfully.');
     }
 
     /**
@@ -470,16 +492,276 @@ class CashierController extends Controller
         return view('cashier.credit_transaction',compact('creditTransactions'));
     }
 
-    public function fines()
+    public function finesTransaction()
     {
-        $currentDate = Carbon::now()->startOfDay(); // Standardize to start of the day
+        // Fetch borrowers and their related borrowed items
+        $borrowers = Borrower::with('borrowedItems.item')->get(); // Eager load borrowedItems and their related item
+    return view('cashier.fines_transaction', compact('borrowers'));
+    }
     
-        // Fetch borrowers with overdue return dates and include related item details
-        $borrowers = Borrower::with('item') // Eager load the related item
-            ->whereDate('expected_date_returned', '<', $currentDate)
-            ->get();
+    public function returnItem(Request $request)
+    {
+        $validated = $request->validate([
+            'item_ids' => 'required|array|min:1',
+            'item_ids.*' => 'exists:borrowed_items,id',
+            'conditions' => 'required|array|min:1',
+            'conditions.*' => 'in:Good,Damaged,Lost',
+            'fees' => 'nullable|array',
+            'fees.*' => 'nullable|numeric|min:0',
+        ]);
     
-        return view('cashier.fines_transaction', compact('borrowers'));
+        try {
+            $borrowerId = null;
+            $problematicItems = [];
+            $processedItems = 0;
+            $lateFeePerDay = 10;
+            $lateFeeItems = [];
+            $processedItemIds = []; // To track processed items and prevent double counting
+    
+            foreach ($request->item_ids as $itemId) {
+                // Skip if the item has already been processed
+                if (in_array($itemId, $processedItemIds)) {
+                    continue;
+                }
+                
+                // Mark the item as processed
+                $processedItemIds[] = $itemId;
+    
+                $borrowedItem = BorrowedItem::findOrFail($itemId);
+                $borrowerId = $borrowedItem->borrower_id;
+                $condition = $request->conditions[$itemId];
+                $fee = $request->fees[$itemId] ?? 0;
+                $returnDate = Carbon::parse($borrowedItem->return_date)->startOfDay();
+                $currentDate = now()->startOfDay();
+                $daysLate = 0;
+                $lateFee = 0;
+    
+                if ($currentDate->greaterThan($returnDate)) {
+                    $daysLate = $currentDate->diffInDays($returnDate);
+                    $lateFee = $daysLate * $lateFeePerDay;
+                }
+    
+                $itemData = [
+                    'item_id' => $itemId,
+                    'student_id' => $borrowedItem->borrower->student_number,
+                    'student_name' => $borrowedItem->borrower->student_name,
+                    'item_name' => $borrowedItem->item->item_name,
+                    'days_late' => $daysLate,
+                    'late_fee' => $lateFee,
+                    'additional_fee' => $fee,
+                    'total_fee' => $lateFee + $fee,
+                    'condition' => $condition,
+                ];
+    
+                if ($condition === 'Good') {
+                    // Increment the quantity by 1 only once per unique item
+                    $borrowedItem->item->decrement('quantity_borrowed', 1);      
+                    $borrowedItem->actual_return_date = now();
+                    $borrowedItem->status = 'Returned';
+                    $borrowedItem->save();
+    
+                    // Add to late fee items only if late fee or additional fees are present
+                    if ($daysLate > 0 || $fee > 0) {
+                        $lateFeeItems[] = $itemData;
+                    }
+                    $processedItems++;
+    
+                } else {
+                    // Handle items with problems like Damaged or Lost
+                    $borrowedItem->item->decrement('quantity_borrowed', 1);
+                    $lateFeeItems[] = $itemData;
+                    $problematicItems[] = $itemData;
+                }
+            }
+    
+            if (!empty($problematicItems) && !empty($lateFeeItems)) {
+                return redirect()->back()->with([
+                    'late_fee_modal' => true,
+                    'late_fee_items' => $lateFeeItems,
+                    'problematic_items' => $problematicItems
+                ]);
+            }
+    
+            // If there are items with late fees in Good condition, prompt for payment
+            if (!empty($lateFeeItems)) {
+                return redirect()->back()->with([
+                    'late_fee_modal' => true,
+                    'late_fee_items' => $lateFeeItems,
+                ]);
+            }
+    
+            if ($processedItems > 0) {
+                $remainingItems = BorrowedItem::where('borrower_id', $borrowerId)
+                    ->where('status', '!=', 'Returned')
+                    ->count();
+    
+                if ($remainingItems === 0) {
+                    Borrower::destroy($borrowerId);
+                }
+    
+                return redirect()->back()->with('success', 'Good condition item(s) returned successfully.');
+            }
+    
+            return redirect()->back()->with('info', 'No items were processed.');
+        } catch (\Exception $e) {
+            \Log::error('Return Item Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred while processing the return.');
+        }
+    }
+    
+    
+    public function payLateFees(Request $request)
+    {
+        $validated = $request->validate([
+            'late_fee_items' => 'required|array|min:1',
+            'late_fee_items.*.item_id' => 'exists:borrowed_items,id',
+            'late_fee_items.*.total_fee' => 'required|numeric|min:0',
+            'late_fee_items.*.days_late' => 'required|integer|min:0',
+            'payment_method' => 'required|in:cash,gcash',
+            'gcash_reference_number_hidden' => 'required_if:payment_method,gcash',
+            'cash_tendered_hidden' => 'required_if:payment_method,cash|numeric|min:0',
+            'change_amount' => 'required|numeric|min:0',
+        ]);
+
+        
+    
+        try {
+            $paymentMethod = $request->payment_method;
+            $gcashReferenceNumber = $request->gcash_reference_number_hidden ?? null;
+            $cashTendered = $request->cash_tendered_hidden ?? 0;
+            $changeAmount = $request->change_amount ?? 0;
+    
+            // Group late fee items by borrower ID for efficient processing
+            $lateFeeItemsGrouped = collect($request->late_fee_items)->groupBy(function ($item) {
+                return BorrowedItem::find($item['item_id'])->borrower_id;
+            });
+    
+            \DB::beginTransaction();
+    
+            foreach ($lateFeeItemsGrouped as $borrowerId => $items) {
+                $borrower = Borrower::findOrFail($borrowerId);
+    
+                foreach ($items as $item) {
+                    $borrowedItem = BorrowedItem::findOrFail($item['item_id']);
+    
+                    // Record in FinesHistory
+                    FinesHistory::create([
+                        'student_id' => $borrower->student_number,
+                        'student_name' => $borrower->student_name,
+                        'item_borrowed' => $borrowedItem->item->item_name,
+                        'quantity' => 1,
+                        'days_late' => $item['days_late'],
+                        'fines_amount' => $item['total_fee'],
+                        'payment_method' => ucfirst($paymentMethod),
+                        'cash_tendered' => $paymentMethod === 'cash' ? $cashTendered : 0,
+                        'change' => $paymentMethod === 'cash' ? $changeAmount : 0,
+                        'gcash_reference_number' => $paymentMethod === 'gcash' ? $gcashReferenceNumber : null,
+                        'actual_return_date' => now(),
+                        'condition' => $item['condition'] ?? 'Good',
+                    ]);
+    
+                    $borrowedItem->update(['status' => 'Returned']);
+                }
+    
+                // Check if all items for this borrower are returned
+                $remainingItems = BorrowedItem::where('borrower_id', $borrowerId)
+                    ->where('status', '!=', 'Returned')
+                    ->count();
+    
+                if ($remainingItems === 0) {
+                    $borrower->delete();
+                }
+            }
+    
+            \DB::commit();
+            return redirect()->back()->with('success', 'Late fees paid and items returned successfully.');
+    
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Pay Late Fees Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred while processing the late fee payment.');
+        }
+    }
+    
+    
+    public function processPayment(Request $request)
+    {
+        // Validate the payment input
+        $validated = $request->validate([
+            'total_fee' => 'required|numeric|min:0',
+            'payment_method' => 'required|in:cash,gcash',
+            'gcash_reference_number_hidden' => 'required_if:payment_method,gcash',
+            'cash_tendered_hidden' => 'required_if:payment_method,cash|numeric|min:0',
+            'change_amount' => 'required|numeric|min:0',
+            'item_ids' => 'required|array|min:1',
+            'item_ids.*' => 'exists:borrowed_items,id',
+            'conditions' => 'required|array',
+            'conditions.*' => 'in:Good,Damaged,Lost',
+            'fees' => 'nullable|array',
+            'fees.*' => 'nullable|numeric|min:0',
+        ]);
+    
+        try {
+            $totalFee = $request->total_fee;
+            $paymentMethod = $request->payment_method;
+            $gcashReferenceNumber = $request->gcash_reference_number_hidden;
+            $cashTendered = $request->cash_tendered_hidden;
+            $changeAmount = $request->change_amount;
+    
+            foreach ($request->item_ids as $itemId) {
+                $borrowedItem = BorrowedItem::findOrFail($itemId);
+                $condition = $request->conditions[$itemId];
+                $fee = $request->fees[$itemId] ?? 0;
+    
+                // Calculate late fees
+                $returnDate = Carbon::parse($borrowedItem->return_date)->startOfDay();
+                $currentDate = now()->startOfDay();
+                $daysLate = 0;
+                $lateFee = 0;
+    
+                if ($currentDate->greaterThan($returnDate)) {
+                    $daysLate = $currentDate->diffInDays($returnDate);
+                    $lateFee = $daysLate * 10; // Assuming 10 PHP per day
+                }
+    
+                // Update total_quantity for "Good" condition
+                if ($condition === 'Good') {
+                    $borrowedItem->item->increment('total_quantity');
+                }
+    
+                // Update BorrowedItem
+                $borrowedItem->actual_return_date = now();
+                $borrowedItem->status = 'Returned';
+                $borrowedItem->save();
+    
+                // Record in FinesHistory
+                FinesHistory::create([
+                    'student_id' => $borrowedItem->borrower->student_number,
+                    'student_name' => $borrowedItem->borrower->student_name,
+                    'item_borrowed' => $borrowedItem->item->item_name,
+                    'quantity' => 1, // Assuming one item per record
+                    'days_late' => $daysLate,
+                    'fines_amount' => $lateFee + $fee,
+                    'payment_method' => ucfirst($paymentMethod),
+                    'cash_tendered' => $paymentMethod === 'cash' ? $cashTendered : 0,
+                    'change' => $paymentMethod === 'cash' ? $changeAmount : 0,
+                    'gcash_reference_number' => $paymentMethod === 'gcash' ? $gcashReferenceNumber : null,
+                ]);
+            }
+    
+            // Optionally, delete the borrower if no more borrowed items
+            $borrowerId = BorrowedItem::where('borrower_id', $borrowedItem->borrower_id)
+                ->where('status', '!=', 'Returned')
+                ->count();
+    
+            if ($borrowerId === 0) {
+                Borrower::find($borrowedItem->borrower_id)->delete();
+            }
+    
+            return redirect()->back()->with('success', 'Payment processed and items returned successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'An error occurred while processing the payment.');
+        }
     }
     
 
@@ -564,62 +846,6 @@ class CashierController extends Controller
             'status' => $status, 
         ]);
     }
-    public function processFinePayment(Request $request)
-    {
-        $validated = $request->validate([
-            'borrower_id' => 'required|exists:borrowers,id',
-            'payment_method' => 'required|in:cash,gcash',
-            'amount_tendered' => 'nullable|numeric|min:0',
-            'gcash_reference_number' => 'nullable|string',
-        ]);
-    
-        $borrower = Borrower::findOrFail($validated['borrower_id']);
-        $item = ItemForRent::where('item_name', $borrower->item_name)->first();
-    
-        if (!$item) {
-            return back()->withErrors(['item' => 'Item not found in the inventory.']);
-        }
-    
-        // Calculate days_late
-        $expectedDate = new \DateTime($borrower->expected_date_returned);
-        $currentDate = new \DateTime();
-        $daysLate = max(0, $expectedDate->diff($currentDate)->days); // Ensure non-negative
-    
-        // Calculate fine amount
-        $fineAmount = $daysLate * 20; // Fine is 20 PHP per day
-    
-        if ($validated['payment_method'] === 'cash') {
-            if ($validated['amount_tendered'] < $fineAmount) {
-                return back()->withErrors(['amount_tendered' => 'Insufficient cash provided.']);
-            }
-            $change = $validated['amount_tendered'] - $fineAmount;
-        } else {
-            $change = null;
-        }
-    
-        // Update the quantity_borrowed
-        $item->quantity_borrowed = max(0, $item->quantity_borrowed - $borrower->quantity);
-        $item->save();
-    
-        // Save the fine payment details into fines_history table
-        FinesHistory::create([
-            'student_id' => $borrower->student_id,
-            'student_name' => $borrower->student_name,
-            'item_borrowed' => $borrower->item_name,
-            'quantity' => $borrower->quantity,
-            'days_late' => $daysLate,
-            'fines_amount' => $fineAmount, // Pass the calculated fine amount
-            'payment_method' => $validated['payment_method'],
-            'cash_tendered' => $validated['amount_tendered'] ?? null,
-            'change' => $change,
-            'gcash_reference_number' => $validated['gcash_reference_number'] ?? null,
-        ]);
-    
-        // Optionally mark the borrower as resolved
-        $borrower->delete();
-    
-        return redirect()->route('cashier.fines')->with('success', 'Payment processed successfully.');
-    }  
 
     public function returns()
     {
@@ -816,7 +1042,15 @@ class CashierController extends Controller
         $itemName = $request->input('item_name'); // New filter
     
         // Query Transactions with filters
-        $transactions = Transaction::with(['items', 'user', 'items.item.category'])
+        $transactions = Transaction::with(['user', 'items.item.category' => function($query) use ($category, $itemName) {
+                // Apply filters to the related items
+                if ($category) {
+                    $query->where('id', $category);
+                }
+                if ($itemName) {
+                    $query->where('item_name', $itemName);
+                }
+            }])
             ->when($startDate, function ($query, $startDate) {
                 return $query->whereDate('created_at', '>=', $startDate);
             })
@@ -839,7 +1073,21 @@ class CashierController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
     
-        // Calculate total sales
+        // Filter items within each transaction based on the applied filters
+        $transactions->each(function ($transaction) use ($category, $itemName) {
+            $transaction->items = $transaction->items->filter(function ($item) use ($category, $itemName) {
+                $matches = true;
+                if ($category && $item->item->cat_id != $category) {
+                    $matches = false;
+                }
+                if ($itemName && $item->item->item_name != $itemName) {
+                    $matches = false;
+                }
+                return $matches;
+            });
+        });
+    
+        // Calculate total sales based on the filtered items
         $totalSales = $transactions->sum(function ($transaction) {
             return $transaction->items->sum('total');
         });
@@ -853,6 +1101,7 @@ class CashierController extends Controller
     }
     
     
+    
     public function exportSalesReportPdf(Request $request)
     {
         // Retrieve filter values for the report
@@ -861,9 +1110,9 @@ class CashierController extends Controller
         $categoryId = $request->input('category');
         $paymentMethod = $request->input('payment');
         $itemName = $request->input('item_name'); // New filter
-
+    
         // Fetch filtered transactions
-        $transactions = Transaction::with(['items', 'user', 'items.item.category'])
+        $transactions = Transaction::with(['items.item.category', 'user'])
             ->when($startDate, function ($query, $startDate) {
                 return $query->whereDate('created_at', '>=', $startDate);
             })
@@ -885,32 +1134,60 @@ class CashierController extends Controller
             })
             ->orderBy('created_at', 'desc')
             ->get();
-
+    
+        // **Add Collection-Level Filtering Here**
+        $transactions->each(function ($transaction) use ($categoryId, $itemName) {
+            $transaction->items = $transaction->items->filter(function ($item) use ($categoryId, $itemName) {
+                $matches = true;
+                if ($categoryId && $item->item->cat_id != $categoryId) {
+                    $matches = false;
+                }
+                if ($itemName && stripos($item->item->item_name, $itemName) === false) { // Case-insensitive partial match
+                    $matches = false;
+                }
+                return $matches;
+            });
+        });
+    
+        // **Ensure Transactions with No Items After Filtering Are Removed**
+        $transactions = $transactions->filter(function ($transaction) {
+            return $transaction->items->isNotEmpty();
+        });
+    
         // Calculate total sales
         $totalSales = $transactions->sum(function ($transaction) {
             return $transaction->items->sum('total');
         });
-
+    
         // Retrieve category name if filter is applied
         $categoryName = $categoryId 
             ? Category::find($categoryId)->category_name 
             : 'All Categories';
-
+    
         // Retrieve item name if filter is applied
         $itemNameLabel = $itemName 
             ? $itemName 
             : 'All Items';
-
+    
         // Retrieve cashier name
         $userFullName = Auth::guard('cashier')->user()->full_name;
-
+    
         // Generate PDF
-        $pdf = Pdf::loadView('cashier.sales_report_pdf', compact('transactions', 'totalSales', 'userFullName', 'paymentMethod', 'categoryName', 'itemNameLabel', 'startDate', 'endDate'));
-
+        $pdf = Pdf::loadView('cashier.sales_report_pdf', compact(
+            'transactions', 
+            'totalSales', 
+            'userFullName', 
+            'paymentMethod', 
+            'categoryName', 
+            'itemNameLabel', 
+            'startDate', 
+            'endDate'
+        ));
+    
         // View PDF
         return $pdf->stream('sales_report.pdf');
     }
-
+    
 
     public function exportSalesReportExcel(Request $request)
     {
@@ -945,7 +1222,7 @@ class CashierController extends Controller
             });
         }
     
-        // Item Name Filtering (Keep this to filter transactions)
+        // Item Name Filtering
         if ($itemName) {
             $query->whereHas('items.item', function ($q) use ($itemName) {
                 $q->where('item_name', $itemName);
@@ -953,14 +1230,15 @@ class CashierController extends Controller
         }
     
         // Load relationships and get results
-        $transactions = $query->with(['items', 'items.item.category', 'user'])->get();
+        $transactions = $query->with(['items.item.category', 'user'])->get();
     
         // Pass filter parameters to SalesReportExport
         $categoryName = $categoryId ? Category::find($categoryId)->category_name : 'All Categories';
         $itemNameLabel = $itemName ? $itemName : 'All Items'; // Pass the itemName string directly
     
-        return Excel::download(new SalesReportExport($transactions, $startDate, $endDate, $categoryName, $selectedPaymentMethod, $itemName), 'sales_report.xlsx');
+        return Excel::download(new SalesReportExport($transactions, $startDate, $endDate, $categoryName, $selectedPaymentMethod, $itemName, $categoryId), 'sales_report.xlsx');
     }
+    
     
     public function services()
     {

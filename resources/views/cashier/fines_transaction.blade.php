@@ -3,24 +3,47 @@
 @section('title', 'Fines Transaction')
 
 @section('content')
+
 <ol class="breadcrumb mb-3 mt-5">
     <li class="breadcrumb-item"><a href="{{ route('cashier.cashier_dashboard') }}">Home</a></li>
     <li class="breadcrumb-item active">Fines Transaction</li>
 </ol>
 
+<!-- Session Messages -->
+@if(session('message'))
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        {{ session('message') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
 <div class="card mb-4" style="box-shadow: 12px 12px 7px rgba(0, 0, 0, 0.3);">
     <div class="card-header">
         <i class="fas fa-table me-1"></i>
-        Toga Fines List
+        Borrower List
     </div>
     <div class="card-body">
         <table id="datatablesSimple" class="table table-bordered table-striped">
             <thead>
                 <tr>
-                    <th>ID Number</th>
+                    <th>Student ID</th>
                     <th>Student Name</th>
                     <th>Item Borrowed</th>
-                    <th>Quantity Borrowed</th>
+                    <th>Date Issued</th>
                     <th>Expected Return Date</th>
                     <th>Action</th>
                 </tr>
@@ -28,19 +51,41 @@
             <tbody>
                 @foreach ($borrowers as $borrower)
                     <tr>
-                        <td>{{ $borrower->student_id }}</td>
+                        <td>{{ $borrower->student_number }}</td>
                         <td>{{ $borrower->student_name }}</td>
-                        <td>{{ $borrower->item_names }}</td>
-                        <td>{{ $borrower->quantity }}</td>
-                        <td>{{ $borrower->expected_date_returned }}</td>
                         <td>
-                            <!-- Button to trigger modal -->
-                            <button class="btn btn-danger btn-sm rounded-circle view_btn" title="Return" 
-                                    onclick="showFineModal('{{ $borrower->id }}', 
-                                                          '{{ $borrower->student_name }}', 
-                                                          '{{ $borrower->item_names }}', 
-                                                          '{{ $borrower->expected_date_returned }}')">
-                                                          <i class="fa-solid fa-arrow-rotate-left"></i>
+                            <!-- Join borrowed item names into a comma-separated string -->
+                            @php
+                                $borrowedItemNames = $borrower->borrowedItems
+                                    ->map(function ($borrowedItem) {
+                                        return $borrowedItem->item->item_name;
+                                    })
+                                    ->implode(', ');
+                            @endphp
+                            {{ $borrowedItemNames }}
+                        </td>
+                        <td>
+                            @if($borrower->borrowedItems->isNotEmpty())
+                                {{ \Carbon\Carbon::parse($borrower->borrowedItems->first()->borrowed_date)->format('m-d-Y') }}
+                            @else
+                                N/A
+                            @endif
+                        </td>
+                        <td>
+                            @if($borrower->borrowedItems->isNotEmpty())
+                                {{ \Carbon\Carbon::parse($borrower->borrowedItems->first()->return_date)->format('m-d-Y') }}
+                            @else
+                                N/A
+                            @endif
+                        </td>
+                        <td>
+                            <button class="btn btn-success btn-sm rounded-circle" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#returnModal" 
+                                    data-borrower='@json($borrower)' 
+                                    data-items='@json($borrower->borrowedItems)'
+                                    title="Return">
+                                <i class="fa-solid fa-arrow-rotate-left"></i>
                             </button>
                         </td>
                     </tr>
@@ -50,109 +95,460 @@
     </div>
 </div>
 
-<!-- Modal -->
-<div class="modal fade" id="fineModal" tabindex="-1" aria-labelledby="fineModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+<!-- Return Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1" aria-labelledby="returnModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="fineModalLabel">Return & Fine Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p><strong>Student Name:</strong> <span id="modalStudentName"></span></p>
-                <p><strong>Item Borrowed:</strong> <span id="modalItemName"></span></p>
-                <p><strong>Days Late:</strong> <span id="modalDaysLate"></span></p>
-                <p><strong>Total Fine:</strong> ₱<span id="modalFineAmount"></span></p>
-            </div>
-            <div class="modal-footer">
-                <form action="{{ route('processFinePayment') }}" method="POST" id="paymentForm">
-                    @csrf
-                    <input type="hidden" id="borrowerId" name="borrower_id">
+            <form id="returnForm" method="POST" action="{{ route('cashier.returnItem') }}">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="returnModalLabel">Return Borrowed Items</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <p class="text-danger fst-italic">
+                        Note: If the return date exceeds the expected date, a fee of 10 pesos per item per day will be charged.
+                        <br>For late, damaged, or lost items, the student must proceed to the cashier for the corresponding fee.
+                    </p>
+                    <div id="borrowerInfo" class="mb-3"></div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="borrowedItemsTable">
+                            <thead>
+                                <tr>
+                                    <th>Select</th>
+                                    <th>Item Name</th>
+                                    <th>Borrowed Date</th>
+                                    <th>Expected Return Date</th>
+                                    <th>Days Late</th>
+                                    <th>Condition</th>
+                                    <th>Fee (Damaged/Lost)</th>
+                                    <th>Fee (Days Late)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="borrowedItems"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <strong>Total Fee: PHP <span id="totalFee">0.00</span></strong>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm Return</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Issue Modal for Problematic Items -->
+@if(session('error_modal'))
+<div class="modal fade" id="issueModal" tabindex="-1" role="dialog" aria-labelledby="issueModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('cashier.processPayment') }}" id="paymentForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="issueModalLabel">Item Return Issues</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger"><strong>The following items have issues:</strong></p>
+                    <ul>
+                        @foreach(session('problematic_items') as $item)
+                            <li>
+                                <strong>Item:</strong> {{ $item['item_name'] }}<br>
+                                <strong>Condition:</strong> {{ $item['condition'] }}<br>
+                                <strong>Fee:</strong> PHP {{ number_format($item['fee'], 2) }}<br>
+                                <strong>Days Late:</strong> {{ $item['days_late'] }}<br>
+                                <strong>Late Fee:</strong> PHP {{ number_format($item['late_fee'], 2) }}
+                            </li>
+                        @endforeach
+                    </ul>
+
+                    <div class="mt-3">
+                        <strong style="color: red;">Total Fee: PHP {{ number_format(collect(session('problematic_items'))->sum(function($item) {
+                            return $item['fee'] + ($item['days_late'] * 10);
+                        }), 2) }}</strong>
+                    </div>
 
                     <!-- Payment Method Selection -->
-                    <div class="mb-3">
-                        <label for="paymentMethod" class="form-label"><strong>Payment Method:</strong></label>
-                        <select id="paymentMethod" name="payment_method" class="form-select" required onchange="togglePaymentFields()">
-                            <option value="" selected disabled>Select Payment Method</option>
+                    <div class="mt-3">
+                        <label for="payment_method">Select Payment Method:</label>
+                        <select id="payment_method" class="form-select" onchange="togglePaymentFields()" required>
+                            <option value="" disabled selected>Select a method</option>
                             <option value="cash">Cash</option>
                             <option value="gcash">GCash</option>
                         </select>
                     </div>
 
-                    <!-- Cash Payment Fields -->
-                    <div id="cashFields" style="display: none;">
-                        <div class="mb-3">
-                            <label for="amountTendered" class="form-label"><strong>Amount Tendered:</strong></label>
-                            <input type="number" id="amountTendered" name="amount_tendered" class="form-control" min="0" step="0.01" onchange="calculateChange()" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="change" class="form-label"><strong>Change:</strong></label>
-                            <input type="text" id="change" class="form-control" readonly>
-                        </div>
+                    <!-- GCash Reference Number Input -->
+                    <div id="gcash_reference" class="mt-3" style="display:none;">
+                        <label for="gcash_reference_number">GCash Reference Number:</label>
+                        <input type="text" class="form-control" id="gcash_reference_number" name="gcash_reference_number_hidden" placeholder="Enter GCash Reference Number">
                     </div>
 
-                    <!-- GCash Payment Fields -->
-                    <div id="gcashFields" style="display: none;">
-                        <div class="mb-3">
-                            <label for="referenceNumber" class="form-label"><strong>GCash Reference Number:</strong></label>
-                            <input type="text" id="referenceNumber" name="gcash_reference_number" class="form-control" required>
-                        </div>
+                    <!-- Cash Amount Tendered Input -->
+                    <div id="cash_amount" class="mt-3" style="display:none;">
+                        <label for="cash_tendered">Amount Tendered (in PHP):</label>
+                        <input type="number" class="form-control" id="cash_tendered" name="cash_tendered_hidden" placeholder="Enter Cash Tendered" min="0" step="0.01" oninput="calculateChange()" required>
+                        <div id="change_amount" class="mt-2 text-danger"></div> <!-- Display change if cash selected -->
                     </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 
-                    <button type="submit" class="btn btn-primary">Pay</button>
-                </form>
-            </div>
+                    <!-- Hidden inputs for different payment methods -->
+                    <input type="hidden" name="total_fee" value="{{ collect(session('problematic_items'))->sum(function($item) {
+                        return $item['fee'] + ($item['days_late'] * 10);
+                    }) }}">
+                    <input type="hidden" name="payment_method" id="selected_payment_method" value="">
+                    <input type="hidden" name="gcash_reference_number_hidden" id="gcash_reference_input" value="">
+                    <input type="hidden" name="cash_tendered_hidden" id="cash_tendered_input" value="">
+                    <input type="hidden" name="change_amount" id="change_amount_input" value="0.00">
+
+                    <button type="submit" class="btn btn-success">Pay</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+@endif
 
+<!-- Late Fee Payment Modal -->
+@if(session('late_fee_modal'))
+<div class="modal fade" id="lateFeeModal" tabindex="-1" aria-labelledby="lateFeeModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('cashier.payLateFees') }}" id="lateFeePaymentForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="lateFeeModalLabel">Pay Fines Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
 
+                <div class="modal-body">
+                    <p class="text-danger fst-italic">
+                        Please pay the accumulated late fees for the returned items.
+                    </p>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Item Name</th>
+                                    <th>Days Late</th>
+                                    <th>Late Fee</th>
+                                    <th>Condition</th>
+                                    <th>Additional Fee (Damage/Lost)</th>
+                                    <th>Total Fee (PHP)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach(session('late_fee_items') as $item)
+                                    <tr>
+                                        <td>{{ $item['item_name'] }}</td>
+                                        <td>{{ $item['days_late'] }}</td>
+                                        <td>₱{{ number_format($item['late_fee'], 2) }}</td>
+                                        <td>{{ $item['condition'] ?? 'Good' }}</td>
+                                        <td>₱{{ number_format($item['additional_fee'], 2) }}</td>
+                                        <td>₱{{ number_format($item['total_fee'], 2) }}</td>
+                                        <!-- Hidden inputs to pass data -->
+                                        <input type="hidden" name="late_fee_items[{{ $loop->index }}][item_id]" value="{{ $item['item_id'] }}">
+                                        <input type="hidden" name="late_fee_items[{{ $loop->index }}][total_fee]" value="{{ $item['total_fee'] }}">
+                                        <input type="hidden" name="late_fee_items[{{ $loop->index }}][days_late]" value="{{ $item['days_late'] }}">
+                                        <input type="hidden" name="late_fee_items[{{ $loop->index }}][condition]" value="{{ $item['condition'] ?? 'Good' }}">
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3">
+                        <h3>Summary</h3><hr>
+                        <b>Late Fee:</b> ₱{{ number_format(collect(session('late_fee_items'))->sum('late_fee'), 2) }}<br>
+                        <b>Damage/Lost Fee:</b> ₱{{ number_format(collect(session('late_fee_items'))->sum('additional_fee'), 2) }}<br>
+                        <h5 class="mt-2"><strong class="text-success">Total Late Fee: PHP {{ number_format(collect(session('late_fee_items'))->sum('total_fee'), 2) }}</strong></h5>
+                    </div>
+                    <div class="mt-3">
+                        <label for="late_payment_method">Select Payment Method:</label>
+                        <select id="late_payment_method" class="form-select" onchange="toggleLatePaymentFields()" required>
+                            <option value="" disabled selected>Select a method</option>
+                            <option value="cash">Cash</option>
+                            <option value="gcash">GCash</option>
+                        </select>
+                    </div>
+                    <div id="late_gcash_reference" class="mt-3" style="display:none;">
+                        <label for="late_gcash_reference_number">GCash Reference Number:</label>
+                        <input type="text" class="form-control" id="late_gcash_reference_number" name="gcash_reference_number_hidden" placeholder="Enter GCash Reference Number">
+                    </div>
+                    <div id="late_cash_amount" class="mt-3" style="display:none;">
+                        <label for="late_cash_tendered">Amount Tendered (in PHP):</label>
+                        <input type="number" class="form-control" id="late_cash_tendered" name="cash_tendered_hidden" placeholder="Enter Cash Tendered" min="0" step="0.01" oninput="calculateLateChange()" required>
+                        <div id="late_change_amount" class="mt-2"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <input type="hidden" name="payment_method" id="late_selected_payment_method" value="">
+                    <input type="hidden" name="change_amount" id="late_change_amount_input" value="0.00">
+                    <button type="submit" class="btn btn-success">Pay</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+<!-- JavaScript Section -->
 <script>
-    function showFineModal(id, studentName, itemName, expectedDate) {
-        const currentDate = new Date();
-        const expectedReturnDate = new Date(expectedDate);
-        const daysLate = Math.floor((currentDate - expectedReturnDate) / (1000 * 60 * 60 * 24));
-        const fineAmount = daysLate * 20; // 20 PHP per day
-
-        // Populate modal fields
-        document.getElementById('modalStudentName').textContent = studentName;
-        document.getElementById('modalItemName').textContent = itemName;
-        document.getElementById('modalDaysLate').textContent = daysLate > 0 ? daysLate : 0;
-        document.getElementById('modalFineAmount').textContent = daysLate > 0 ? fineAmount : 0;
-        document.getElementById('borrowerId').value = id;
-
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('fineModal'));
-        modal.show();
-    }
-
+    // Define functions in the global scope to ensure accessibility from inline event handlers
     function togglePaymentFields() {
-        const paymentMethod = document.getElementById('paymentMethod').value;
-        const cashFields = document.getElementById('cashFields');
-        const gcashFields = document.getElementById('gcashFields');
+        var paymentMethod = document.getElementById('payment_method').value;
+        var gcashReferenceDiv = document.getElementById('gcash_reference');
+        var cashAmountDiv = document.getElementById('cash_amount');
 
-        if (paymentMethod === 'cash') {
-            cashFields.style.display = 'block';
-            gcashFields.style.display = 'none';
-            document.getElementById('referenceNumber').removeAttribute('required');
-            document.getElementById('amountTendered').setAttribute('required', 'required');
-        } else if (paymentMethod === 'gcash') {
-            cashFields.style.display = 'none';
-            gcashFields.style.display = 'block';
-            document.getElementById('amountTendered').removeAttribute('required');
-            document.getElementById('referenceNumber').setAttribute('required', 'required');
+        if(paymentMethod === 'gcash'){
+            gcashReferenceDiv.style.display = 'block';
+            cashAmountDiv.style.display = 'none';
+        } else if(paymentMethod === 'cash') {
+            gcashReferenceDiv.style.display = 'none';
+            cashAmountDiv.style.display = 'block';
         } else {
-            cashFields.style.display = 'none';
-            gcashFields.style.display = 'none';
+            gcashReferenceDiv.style.display = 'none';
+            cashAmountDiv.style.display = 'none';
         }
+
+        // Update hidden inputs
+        document.getElementById('selected_payment_method').value = paymentMethod;
+        document.getElementById('gcash_reference_input').value = paymentMethod === 'gcash' ? document.getElementById('gcash_reference_number').value : '';
+        document.getElementById('cash_tendered_input').value = paymentMethod === 'cash' ? document.getElementById('cash_tendered').value : '';
+        document.getElementById('change_amount_input').value = paymentMethod === 'cash' ? (parseFloat(document.getElementById('cash_tendered').value || 0) - parseFloat(document.querySelector('input[name="total_fee"]').value || 0)).toFixed(2) : '0.00';
     }
 
     function calculateChange() {
-        const fineAmount = parseFloat(document.getElementById('modalFineAmount').textContent);
-        const amountTendered = parseFloat(document.getElementById('amountTendered').value || 0);
-        const change = amountTendered - fineAmount;
-        document.getElementById('change').value = change > 0 ? change.toFixed(2) : '0.00';
+        var cashTendered = parseFloat(document.getElementById('cash_tendered').value) || 0;
+        var totalFee = parseFloat(document.querySelector('input[name="total_fee"]').value) || 0;
+        var changeAmount = cashTendered - totalFee;
+
+        if(changeAmount >= 0){
+            document.getElementById('change_amount').innerText = `Change: PHP ${changeAmount.toFixed(2)}`;
+            document.getElementById('change_amount_input').value = changeAmount.toFixed(2);
+        } else {
+            document.getElementById('change_amount').innerText = 'Insufficient cash tendered.';
+            document.getElementById('change_amount_input').value = '0.00';
+        }
     }
 
+    function toggleLatePaymentFields() {
+        var paymentMethod = document.getElementById('late_payment_method').value;
+        var gcashReferenceDiv = document.getElementById('late_gcash_reference');
+        var cashAmountDiv = document.getElementById('late_cash_amount');
+
+        if(paymentMethod === 'gcash'){
+            gcashReferenceDiv.style.display = 'block';
+            cashAmountDiv.style.display = 'none';
+        } else if(paymentMethod === 'cash') {
+            gcashReferenceDiv.style.display = 'none';
+            cashAmountDiv.style.display = 'block';
+        } else {
+            gcashReferenceDiv.style.display = 'none';
+            cashAmountDiv.style.display = 'none';
+        }
+
+        // Update hidden inputs
+        document.getElementById('late_selected_payment_method').value = paymentMethod;
+        document.getElementById('late_gcash_reference_input').value = paymentMethod === 'gcash' ? document.getElementById('late_gcash_reference_number').value : '';
+        document.getElementById('late_change_amount_input').value = paymentMethod === 'cash' ? (parseFloat(document.getElementById('late_cash_tendered').value || 0) - parseFloat(document.querySelector('strong').textContent.replace('PHP ', ''))) : '0.00';
+    }
+
+    function calculateLateChange() {
+    // Retrieve the amount tendered from the input field
+    var cashTendered = parseFloat(document.getElementById('late_cash_tendered').value) || 0;
+
+    // Extract the total late fee from the display text
+    var totalFeeText = document.querySelector('#lateFeeModal strong').textContent;
+    var totalFee = parseFloat(totalFeeText.replace('Total Late Fee: PHP ', '').replace(',', '')) || 0;
+
+    // Calculate the change
+    var changeAmount = cashTendered - totalFee;
+
+    // Update the change amount display and hidden input field
+    if (changeAmount >= 0) {
+        document.getElementById('late_change_amount').innerText = `Change: PHP ${changeAmount.toFixed(2)}`;
+        document.getElementById('late_change_amount_input').value = changeAmount.toFixed(2);
+    } else {
+        document.getElementById('late_change_amount').innerText = 'Insufficient cash tendered.';
+        document.getElementById('late_change_amount_input').value = '0.00';
+    }
+}
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show issueModal if session('error_modal') exists
+        @if(session('error_modal'))
+            var issueModal = new bootstrap.Modal(document.getElementById('issueModal'));
+            issueModal.show();
+        @endif
+
+        // Show lateFeeModal if session('late_fee_modal') exists
+        @if(session('late_fee_modal'))
+            var lateFeeModal = new bootstrap.Modal(document.getElementById('lateFeeModal'));
+            lateFeeModal.show();
+        @endif
+
+        // Auto-hide success alert after 2 seconds
+        const successAlert = document.querySelector('.alert-success');
+        if (successAlert) {
+            setTimeout(() => {
+                successAlert.classList.add('fade'); // Add fade class for smooth transition
+                setTimeout(() => {
+                    successAlert.remove(); // Remove from DOM after fade transition
+                }, 500); // Match the Bootstrap fade duration (0.5 seconds)
+            }, 2000); // Wait for 2 seconds
+        }
+
+        // Handle Return Modal
+        var returnModalElement = document.getElementById('returnModal');
+        returnModalElement.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var borrower = JSON.parse(button.getAttribute('data-borrower'));
+            var items = JSON.parse(button.getAttribute('data-items'));
+
+            // Borrower Information
+            var borrowerInfo = document.getElementById('borrowerInfo');
+            borrowerInfo.innerHTML = `<p><strong>Student Name:</strong> ${borrower.student_name} (${borrower.student_number})</p>`;
+
+            var borrowedItemsContainer = document.getElementById('borrowedItems');
+            borrowedItemsContainer.innerHTML = '';
+            var totalFee = 0;
+
+            // Get today's date in UTC (set time to 00:00:00)
+            var today = new Date();
+            var utcToday = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+
+            items.forEach(function(item) {
+                // Parse dates assuming they are in 'YYYY-MM-DD' format
+                var borrowedDateParts = item.borrowed_date.split('-');
+                var expectedReturnDateParts = item.return_date.split('-');
+
+                var borrowedDate = new Date(Date.UTC(
+                    parseInt(borrowedDateParts[0], 10),
+                    parseInt(borrowedDateParts[1], 10) - 1,
+                    parseInt(borrowedDateParts[2], 10)
+                ));
+
+                var expectedReturnDate = new Date(Date.UTC(
+                    parseInt(expectedReturnDateParts[0], 10),
+                    parseInt(expectedReturnDateParts[1], 10) - 1,
+                    parseInt(expectedReturnDateParts[2], 10)
+                ));
+
+                // Calculate days late
+                var daysLate = 0;
+                if (utcToday > expectedReturnDate.getTime()) {
+                    var diffInMs = utcToday - expectedReturnDate.getTime();
+                    daysLate = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+                }
+
+                var lateFee = daysLate * 10;
+                totalFee += lateFee;
+
+                borrowedItemsContainer.innerHTML += `
+                    <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input item-checkbox" id="itemCheck_${item.id}" name="item_ids[]" value="${item.id}" checked>
+                        </td>
+                        <td>${item.item.item_name}</td>
+                        <td>${borrowedDate.toLocaleDateString('en-US')}</td>
+                        <td>${expectedReturnDate.toLocaleDateString('en-US')}</td>
+                        <td>${daysLate}</td>
+                        <td>
+                            <select class="form-select condition-select" id="condition_${item.id}" name="conditions[${item.id}]" data-item-id="${item.id}">
+                                <option value="Good" selected>Good</option>
+                                <option value="Damaged">Damaged</option>
+                                <option value="Lost">Lost</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" class="form-control fee-input" name="fees[${item.id}]" data-item-id="${item.id}" placeholder="Enter Fee" style="display:none" min="0" step="0.01">
+                        </td>
+                        <td class="late-fee" data-item-id="${item.id}">₱${lateFee.toFixed(2)}</td> 
+                    </tr>
+                `;
+            });
+
+            // Update the total fee display
+            document.getElementById('totalFee').textContent = totalFee.toFixed(2);
+
+            // Add event listeners for condition changes
+            document.querySelectorAll('.condition-select').forEach(function(select) {
+                select.addEventListener('change', function() {
+                    var itemId = this.getAttribute('data-item-id');
+                    var feeInput = document.querySelector(`.fee-input[data-item-id="${itemId}"]`);
+                    var lateFeeCell = document.querySelector(`.late-fee[data-item-id="${itemId}"]`);
+
+                    if (this.value === 'Good') {
+                        feeInput.style.display = 'none';
+                        feeInput.value = ''; // Clear any entered value
+                        feeInput.removeAttribute('required');
+                        lateFeeCell.style.display = 'table-cell';
+                    } else {
+                        feeInput.style.display = 'block';
+                        feeInput.setAttribute('required', 'required');
+                        lateFeeCell.style.display = 'none';
+                        feeInput.focus();
+                    }
+                    updateTotalFee();
+                });
+            });
+
+            // Add event listeners for fee input changes
+            document.querySelectorAll('.fee-input').forEach(function(input) {
+                input.addEventListener('input', updateTotalFee);
+            });
+
+            // Function to update the total fee
+            function updateTotalFee() {
+                var newTotalFee = 0;
+                document.querySelectorAll('.item-checkbox').forEach(function(checkbox) {
+                    if (checkbox.checked) {
+                        var row = checkbox.closest('tr');
+                        var lateFeeCell = row.querySelector('.late-fee');
+                        var feeInput = row.querySelector('.fee-input');
+
+                        if (feeInput && feeInput.style.display !== 'none' && feeInput.value) {
+                            newTotalFee += parseFloat(feeInput.value) || 0;
+                        } else if (lateFeeCell && lateFeeCell.style.display !== 'none') {
+                            newTotalFee += parseFloat(lateFeeCell.textContent.replace('₱', '')) || 0;
+                        }
+                    }
+                });
+                document.getElementById('totalFee').textContent = newTotalFee.toFixed(2);
+            }
+        });
+    });
+
+    document.getElementById('lateFeePaymentForm').addEventListener('submit', function (event) {
+    // Get the selected payment method
+    const paymentMethod = document.getElementById('late_payment_method').value;
+
+    // Proceed only if payment method is cash
+    if (paymentMethod === 'cash') {
+        // Get cash tendered and total fee
+        const cashTendered = parseFloat(document.getElementById('late_cash_tendered').value) || 0;
+        const totalFeeText = document.querySelector('#lateFeeModal strong').textContent;
+        const totalFee = parseFloat(totalFeeText.replace('Total Late Fee: PHP ', '').replace(',', '')) || 0;
+
+        // Validate cash tendered
+        if (cashTendered < totalFee) {
+            // Prevent form submission
+            event.preventDefault();
+
+            // Show alert
+            alert(`Insufficient cash tendered. Please provide at least PHP ${totalFee.toFixed(2)}.`);
+            return false;
+        }
+    }
+});
+
 </script>
+
 @endsection

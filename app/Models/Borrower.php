@@ -14,15 +14,10 @@ class Borrower extends Model
      *
      * @var array<int, string>
      */
+    protected $table = 'borrowers';
     protected $fillable = [
-        'student_id',
+        'student_number',
         'student_name',
-        'item_names',
-        'item_id',
-        'quantity',
-        'date_issued',
-        'expected_date_returned',
-        'actual_date_returned',
     ];
 
     /**
@@ -35,5 +30,13 @@ class Borrower extends Model
         return $this->belongsTo(ItemForRent::class, 'item_id');
     }
     
+    public function borrowedItems()
+    {
+        return $this->hasMany(BorrowedItem::class);
+    }
+    public function finesHistories()
+    {
+        return $this->hasMany(FinesHistory::class, 'student_id', 'id');
+    }
     
 }

@@ -5,7 +5,7 @@
 @section('content')
 
 
-    <h1 class="mt-4">User Management</h1>
+<h1 class="mt-4">User Management</h1>
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{{ route('superadmin.dashboard') }}">Home</a></li>
         <li class="breadcrumb-item active">User Management</li>
@@ -14,7 +14,7 @@
 <!-- Success and Error Messages -->
 @if(Session::has('success'))
     <div class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">
-        <i class="fas fa-check-circle me-2 fa-lg"></i>
+        <i class="fas fa-checck-circle me-2 fa-lg"></i>
         <div>
             {{ Session::get('success') }}
         </div>
@@ -59,6 +59,7 @@
                         <th>Full Name</th>
                         <th>Role</th>
                         <th>Status</th>
+                        <th>Activity</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -75,6 +76,7 @@
                                     <span class="badge bg-secondary">Inactive</span>
                                 @endif
                             </td>
+                            <td>{{ $user->logs->last()->activity ?? 'No Activity' }}</td>
                             <td>
                                 <!-- Edit Button -->
                                 <a href="#"
@@ -179,7 +181,7 @@
                     <!-- Username Field -->
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control @error('username') is-invalid @enderror" id="username" name="username" value="{{ old('username') }}" required>
+                        <input type="text" class="form-control @error('username') is-invalid @enderror" id="username" name="username" value="{{ old('username') }}" required readonly>
                         @error('username')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror

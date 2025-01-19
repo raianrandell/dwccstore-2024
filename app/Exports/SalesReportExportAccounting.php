@@ -2,9 +2,8 @@
 
 namespace App\Exports;
 
-use App\Models\Transaction;
 use App\Models\Category;
-use App\Models\Item;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -24,45 +23,74 @@ class SalesReportExportAccounting implements FromCollection, WithHeadings, WithE
     protected $selectedCategory;
     protected $selectedPaymentMethod;
     protected $selectedItemName;
+    protected $selectedCategoryId;
+    protected $totalSales;
 
-    public function __construct($transactions, $startDate = null, $endDate = null, $selectedCategory = null, $selectedPaymentMethod = null, $selectedItemName = null)
-    {
+    /**
+     * Constructor to initialize the export with necessary data and filters.
+     *
+     * @param Collection $transactions
+     * @param string|null $startDate
+     * @param string|null $endDate
+     * @param string|null $selectedCategory
+     * @param string|null $selectedPaymentMethod
+     * @param string|null $selectedItemName
+     * @param int|null $selectedCategoryId
+     */
+    public function __construct(
+        Collection $transactions,
+        $startDate = null,
+        $endDate = null,
+        $selectedCategory = null,
+        $selectedPaymentMethod = null,
+        $selectedItemName = null,
+        $selectedCategoryId = null
+    ) {
         $this->transactions = $transactions;
         $this->startDate = $startDate;
         $this->endDate = $endDate;
         $this->selectedCategory = $selectedCategory;
         $this->selectedPaymentMethod = $selectedPaymentMethod;
         $this->selectedItemName = $selectedItemName;
+        $this->selectedCategoryId = $selectedCategoryId;
+        $this->totalSales = 0;
     }
 
+    /**
+     * Prepare the collection of data to be exported.
+     *
+     * @return Collection
+     */
     public function collection()
     {
         $data = [];
-        $totalSales = 0;
 
         foreach ($this->transactions as $transaction) {
             foreach ($transaction->items as $item) {
-                // Check if the item relationship exists
                 if ($item->item) {
-                    $categoryName = $item->item->cat_id
-                        ? Category::find($item->item->cat_id)->category_name
+                    $categoryName = $item->item->category
+                        ? $item->item->category->category_name
                         : 'N/A';
 
-                    // Apply item name filter in the export if needed
-                    if (!$this->selectedItemName || $item->item->item_name === $this->selectedItemName) {
+                    // Apply both category and item name filters
+                    $matchesCategory = !$this->selectedCategoryId || $item->item->cat_id == $this->selectedCategoryId;
+                    $matchesItemName = !$this->selectedItemName || $item->item->item_name === $this->selectedItemName;
+
+                    if ($matchesCategory && $matchesItemName) {
                         $data[] = [
                             'date_time'      => $transaction->created_at->format('m-d-Y h:i:s'),
                             'transaction_no' => $transaction->transaction_no,
                             'item_name'      => $item->item->item_name,
                             'category'       => $categoryName,
                             'quantity'       => $item->quantity,
+                            'unit_of_measurement'  => $item->item->unit_of_measurement,
                             'price'          => $item->price,
                             'total'          => $item->total,
                             'payment_method' => ucfirst($transaction->payment_method),
                             'cashier_name'   => $transaction->user->full_name ?? 'N/A',
                         ];
 
-                        $totalSales += $item->total;
+                        $this->totalSales += $item->total;
                     }
                 }
             }
@@ -71,6 +99,11 @@ class SalesReportExportAccounting implements FromCollection, WithHeadings, WithE
         return collect($data);
     }
 
+    /**
+     * Define the headings for the Excel sheet.
+     *
+     * @return array
+     */
     public function headings(): array
     {
         return [
@@ -79,6 +112,7 @@ class SalesReportExportAccounting implements FromCollection, WithHeadings, WithE
             'Item Name',
             'Category',
             'Quantity',
+            'Unit',
             'Price',
             'Total',
             'Payment Method',
@@ -86,17 +120,26 @@ class SalesReportExportAccounting implements FromCollection, WithHeadings, WithE
         ];
     }
 
+    /**
+     * Specify the starting cell for the data table.
+     *
+     * @return string
+     */
     public function startCell(): string
     {
-        return 'A9'; // Start the data table from A8
+        return 'A9'; // Data table starts from A9
     }
 
+    /**
+     * Register events to customize the Excel sheet after it's created.
+     *
+     * @return array
+     */
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $totalSales = 0;
 
                 // --- Headers ---
                 // Merge Cells and Header Styling
@@ -154,51 +197,43 @@ class SalesReportExportAccounting implements FromCollection, WithHeadings, WithE
                 $sheet->getColumnDimension('H')->setWidth(20);
                 $sheet->getColumnDimension('I')->setWidth(25);
 
-                // Header row (Now in row 8)
+                // Header row (Now in row 9)
                 $headerStyleArray = [
                     'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'color' => ['rgb' => '20c997']],
                     'borders' => ['outline' => ['borderStyle' => Border::BORDER_THIN]],
                 ];
-                $sheet->getStyle('A9:I9')->applyFromArray($headerStyleArray);
+                $sheet->getStyle('A9:K9')->applyFromArray($headerStyleArray);
 
-                // Calculate total sales from the data (Data now starts from row 9)
-                $startDataRow = 9; // Define the starting row for data
-                foreach ($sheet->getColumnIterator('G') as $column) {
-                    for ($row = $startDataRow; $row <= $sheet->getHighestRow(); $row++) {
-                        $cell = $sheet->getCell("{$column->getColumnIndex()}{$row}");
-                        if (is_numeric($cell->getValue())) {
-                            $totalSales += $cell->getValue();
-                        }
-                    }
-                }
-
-                // Data rows (Now starts from row 9)
+                // Data rows styling
                 $dataStyleArray = [
                     'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_LEFT,
+                        'vertical' => Alignment::VERTICAL_CENTER,
+                    ],
                 ];
-                $dataRange = 'A9:I' . ($sheet->getHighestRow());
+                $dataRange = 'A9:K' . ($sheet->getHighestRow());
                 $sheet->getStyle($dataRange)->applyFromArray($dataStyleArray);
 
                 // --- Total Sales ---
                 $footerStartRow = $sheet->getHighestRow() + 1;
-                $sheet->setCellValue("F$footerStartRow", "Total Sales:");
+                $sheet->setCellValue("F{$footerStartRow}", "Total Sales:");
 
-                // Format the cell with the peso sign
-                $sheet->setCellValue("G$footerStartRow", $totalSales);
-                $sheet->getStyle("G$footerStartRow")->getNumberFormat()->setFormatCode('"₱"#,##0.00'); // Add peso sign
+                // Use the pre-calculated totalSales
+                $sheet->setCellValue("G{$footerStartRow}", $this->totalSales);
+                $sheet->getStyle("G{$footerStartRow}")->getNumberFormat()->setFormatCode('"₱"#,##0.00'); // Add peso sign
 
-                $sheet->getStyle("F$footerStartRow:G$footerStartRow")->getFont()->setBold(true);
+                $sheet->getStyle("F{$footerStartRow}:G{$footerStartRow}")->getFont()->setBold(true);
 
                 // --- Footer ---
                 $generatedBy = Auth::guard('accounting')->check() ? Auth::guard('accounting')->user()->full_name : 'N/A';
                 $generationDate = Carbon::now()->format('F d, Y h:i:s a');
-                $footerStartRow = $sheet->getHighestRow() + 2;
+                $footerStartRow += 1; // Move two rows below the data
 
-                $sheet->setCellValue("A$footerStartRow", "Generated By:");
-                $sheet->setCellValue("B$footerStartRow", $generatedBy);
+                $sheet->setCellValue("A{$footerStartRow}", "Generated By:");
+                $sheet->setCellValue("B{$footerStartRow}", $generatedBy);
 
                 $sheet->setCellValue("A" . ($footerStartRow + 1), "Generation Date:");
                 $sheet->setCellValue("B" . ($footerStartRow + 1), $generationDate);
@@ -208,7 +243,7 @@ class SalesReportExportAccounting implements FromCollection, WithHeadings, WithE
                     'font' => ['italic' => true, 'size' => 10],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT],
                 ];
-                $sheet->getStyle("A$footerStartRow:B" . ($footerStartRow + 1))->applyFromArray($footerStyleArray);
+                $sheet->getStyle("A{$footerStartRow}:B" . ($footerStartRow + 1))->applyFromArray($footerStyleArray);
             },
         ];
     }

@@ -9,20 +9,20 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
+    public function up(): void
     {
-        Schema::table('borrowers', function (Blueprint $table) {
-            $table->text('item_names')->nullable()->after('student_name'); // New column for item names
+        Schema::table('fines_history', function (Blueprint $table) {
+            $table->timestamp('actual_return_date')->nullable()->after('gcash_reference_number');
         });
-    }    
+    }
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::table('borrowers', function (Blueprint $table) {
-            //
+        Schema::table('fines_history', function (Blueprint $table) {
+            $table->dropColumn('actual_return_date');
         });
     }
 };

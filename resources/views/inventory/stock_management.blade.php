@@ -330,7 +330,7 @@
                                         data-bs-target="#modifyExpirationDateModal" data-itemid="{{ $item->id }}"
                                         data-itemname="{{ $item->item_name }}"
                                         data-expirationdate="{{ $item->expiration_date ? \Carbon\Carbon::parse($item->expiration_date)->format('m-d-Y') : 'N/A' }}"
-                                        data-qtyinstock="{{ $item->qtyInStock }}">
+                                        data-qtyinstock="{{ $item->qtyInStock }}" style="display: none;">
                                         <i class="fas fa-calendar-alt"></i>
                                     </button>
 
@@ -558,7 +558,7 @@
                                         @enderror
                                     </div>
                                     <div class="mb-3" id="newExpirationDateContainer" style="display: none;">
-                                        <label for="newExpirationDate" class="form-label">New Expiration Date</label>
+                                        <label for="newExpirationDate" class="form-label">New Expiration Date (optional)</label>
                                         <input type="date" class="form-control" id="newExpirationDate"
                                             name="new_expiration_date" value="{{ old('new_expiration_date') }}">
                                     </div>
@@ -648,7 +648,7 @@
             </div>
         </div>
     </div>
-    <div class="modal fade" id="transferItemModal" tabindex="-1" aria-labelledby="transferItemModalLabel"
+    <div class="modal fade modal-lg" id="transferItemModal" tabindex="-1" aria-labelledby="transferItemModalLabel"
         aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -1257,7 +1257,7 @@
                                 var option = document.createElement('option');
                                 option.value = item.id;
                                 option.textContent =
-                                    `${item.item_name} - Base Price: ₱${parseFloat(item.base_price).toFixed(2)}, Selling Price: ₱${parseFloat(item.selling_price).toFixed(2)}, ${item.unit_of_measurement}`;
+                                    `${item.item_name} - Base Price: ₱${parseFloat(item.base_price).toFixed(2)}, Selling Price: ₱${parseFloat(item.selling_price).toFixed(2)}, ${item.unit_of_measurement}, Qty Stock: ${item.qtyInStock}`;
                                 option.classList.add('text-success');
                                 targetItemDropdown.appendChild(option);
                             });

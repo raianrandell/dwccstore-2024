@@ -120,6 +120,7 @@
                     <th>Item Name</th>
                     <th>Category</th>
                     <th>Quantity</th>
+                    <th>Unit</th>
                     <th>Price</th>
                     <th>Total</th>
                     <th>Payment Method</th>
@@ -135,6 +136,7 @@
                             <td>{{ $item->item_name }}</td>
                             <td>{{ $item->item->category->category_name ?? 'N/A' }}</td>
                             <td>{{ $item->quantity }}</td>
+                            <td>{{ $item->item->unit_of_measurement ?? 'N/A' }}</td>
                             <td>₱{{ number_format($item->price, 2) }}</td>
                             <td>₱{{ number_format($item->total, 2) }}</td>
                             <td>{{ ucfirst($transaction->payment_method) }}</td>

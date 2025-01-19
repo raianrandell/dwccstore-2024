@@ -17,12 +17,19 @@ Route::GET('/superadminlogin', [SuperAdminController::class, 'superadminlogin'])
 Route::GET('/superadminregistration', [SuperAdminController::class, 'superadminregistration']);
 Route::POST('/register_superadmin', [SuperAdminController::class, 'register_superadmin'])->name('register_superadmin');
 Route::POST('/superadminlogin', [SuperAdminController::class, 'login_superadmin'])->name('login_superadmin');
-Route::GET('/superadmin_dashboard', [SuperAdminController::class, 'superadmin_dashboard'])->name('superadmin.dashboard');
 Route::POST('/superadminlogout', [SuperAdminController::class, 'logout'])->name('logout');
-Route::GET('/user_management', [SuperAdminController::class, 'user_management'])->name('superadmin.usermanagement');
-Route::POST('/superadmin/add_user', [SuperAdminController::class, 'add_user'])->name('superadmin.add_user');
-Route::PUT('/superadmin/user/{id}/edit', [SuperAdminController::class, 'edit_user'])->name('superadmin.edit_user');
-Route::PUT('/superadmin/user/{id}/change_password', [SuperAdminController::class, 'change_password'])->name('superadmin.change_password');
+
+Route::prefix('superadmin')->group(function () {
+
+
+    Route::middleware('superadminAuth')->group(function () {
+        Route::GET('/superadmin_dashboard', [SuperAdminController::class, 'superadmin_dashboard'])->name('superadmin.dashboard');
+        Route::GET('/user_management', [SuperAdminController::class, 'user_management'])->name('superadmin.usermanagement');
+        Route::POST('/superadmin/add_user', [SuperAdminController::class, 'add_user'])->name('superadmin.add_user');
+        Route::PUT('/superadmin/user/{id}/edit', [SuperAdminController::class, 'edit_user'])->name('superadmin.edit_user');
+        Route::PUT('/superadmin/user/{id}/change_password', [SuperAdminController::class, 'change_password'])->name('superadmin.change_password');
+    });
+});
 
 // Inventory Routes (using 'inventoryAuth' middleware)
 Route::prefix('inventory')->group(function () {
@@ -117,9 +124,14 @@ Route::prefix('cashier')->group(function () {
 
     Route::POST('/cashier/update-stock', [CashierController::class, 'updateStock'])->name('cashier.update_stock');
     Route::GET('/cashier_credit', [CashierController::class, 'credit'])->name('cashier.credit');
-    Route::GET('/cashier_fines', [CashierController::class, 'fines'])->name('cashier.fines');
-    Route::GET('/cashier_fineshistory', [CashierController::class, 'finesHistory'])->name('cashier.fines_history');
+    Route::get('/fines-transaction', [CashierController::class, 'finesTransaction'])->name('cashier.fines_transaction');
+    Route::post('/return-item', [CashierController::class, 'returnItem'])->name('cashier.returnItem');
+    Route::post('/process-payment', [CashierController::class, 'processPayment'])->name('cashier.processPayment');
+    Route::get('/fines-history', [CashierController::class, 'finesHistory'])->name('cashier.fines_history');
     Route::GET('/cashier_returns', [CashierController::class, 'returns'])->name('cashier.returns');
+    // New route for paying late fees
+Route::post('/cashier/pay-late-fees', [CashierController::class, 'payLateFees'])->name('cashier.payLateFees');
+    
 
     Route::GET('/cashier_salesreport', [CashierController::class, 'sales_report'])->name('cashier.sales_report');
     Route::get('/cashier/sales-report/pdf', [CashierController::class, 'exportSalesReportPdf'])->name('cashier.sales_report.pdf');
@@ -161,11 +173,12 @@ Route::prefix('admin')->group(function () {
         Route::GET('/admindashboard', [AdminController::class, 'adminDashboard'])->name('admin.dashboard');
 
         Route::GET('/admin_reports', [AdminController::class, 'reports'])->name('admin.reports');
-        Route::GET('/admin_toga&fines', [AdminController::class, 'togaFines'])->name('admin.toga_fines');
         Route::GET('/admin_userprofile', [AdminController::class, 'userProfile'])->name('admin.userprofile');
 
-        Route::post('/admin/add-borrower', [AdminController::class, 'addBorrower'])->name('admin.addBorrower');
-        Route::post('/admin/returnBorrower/{id}', [AdminController::class, 'returnBorrower'])->name('admin.returnBorrower');
+        Route::get('/toga-fines', [AdminController::class, 'togaFines'])->name('admin.toga_fines');
+        Route::post('/add-borrower', [AdminController::class, 'addBorrower'])->name('admin.addBorrower');
+        Route::post('/return-borrower', [AdminController::class, 'returnBorrower'])->name('admin.returnBorrower');
+
         Route::POST('/adminlogout', [AdminController::class, 'adminlogout'])->name('admin.logout');
         Route::post('/user/profile/update-password', [AdminController::class, 'changePassword'])->name('admin.changePassword');
 

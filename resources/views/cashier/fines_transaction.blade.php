@@ -140,7 +140,7 @@
     </div>
 </div>
 
-<!-- Issue Modal for Problematic Items -->
+{{-- <!-- Issue Modal for Problematic Items -->
 @if(session('error_modal'))
 <div class="modal fade" id="issueModal" tabindex="-1" role="dialog" aria-labelledby="issueModalLabel" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog" role="document">
@@ -212,7 +212,7 @@
         </div>
     </div>
 </div>
-@endif
+@endif --}}
 
 <!-- Late Fee Payment Modal -->
 @if(session('late_fee_modal'))

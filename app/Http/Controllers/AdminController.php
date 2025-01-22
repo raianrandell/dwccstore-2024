@@ -45,6 +45,7 @@ use App\Exports\ReturnedItemsReportExportAdmin;
 use App\Exports\DamageItemReportExportAdmin;
 use App\Models\BorrowedItem;
 use App\Models\UserLog;
+use App\Exports\FinesReportExportAdmin;
 
 
 
@@ -86,20 +87,35 @@ class AdminController extends Controller
                 return $transaction->items->sum('total');
             });
     
-        // Sales data for the last 7 days or the filtered range
-        $salesData = $query->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as sales'))
-            ->groupBy('date')
-            ->orderBy('date', 'ASC')
-            ->get();
+        // Quantity Sold per Day
+        $salesData = $query->with('items')
+            ->get()
+            ->groupBy(function ($transaction) {
+                return $transaction->created_at->format('Y-m-d'); // Group by date
+            })
+            ->map(function ($transactions) {
+                return $transactions->sum(function ($transaction) {
+                    return $transaction->items->sum('quantity'); // Sum item quantities
+                });
+            });
     
-            $dates = $salesData->pluck('date')->map(function ($date) {
-                return Carbon::parse($date)->format('F d, Y');
-            })->toArray();
-        $sales = $salesData->pluck('sales')->toArray();
-
+        $dates = $salesData->keys()->map(function ($date) {
+            return Carbon::parse($date)->format('F d, Y'); // Format dates
+        })->toArray();
+    
+        $salesQuantities = $salesData->values()->toArray();
+    
         $users = User::with(['logs'])->get();
     
-        return view('admin.admin_dashboard', compact('totalSales', 'totalItems', 'damageItems', 'grandTotal', 'dates', 'sales', 'users'));
+        return view('admin.admin_dashboard', compact(
+            'totalSales',
+            'totalItems',
+            'damageItems',
+            'grandTotal',
+            'dates',
+            'salesQuantities', // Pass sales quantities to the view
+            'users'
+        ));
     }
     
     
@@ -556,15 +572,12 @@ class AdminController extends Controller
                $itemName = $request->input('item_name'); // New filter
            
                // Query Transactions with filters
-               $transactions = Transaction::with(['user', 'items.item.category' => function($query) use ($category, $itemName) {
-                       // Apply filters to the related items
-                       if ($category) {
-                           $query->where('id', $category);
-                       }
-                       if ($itemName) {
-                           $query->where('item_name', $itemName);
-                       }
-                   }])
+               $transactions = Transaction::with(['user', 'items.item.category' => function($query) use ($category) {
+                // Apply filters to the related items
+                if ($category) {
+                    $query->where('id', $category);
+                }
+            }])
                    ->when($startDate, function ($query, $startDate) {
                        return $query->whereDate('created_at', '>=', $startDate);
                    })
@@ -1047,6 +1060,85 @@ class AdminController extends Controller
             'Returned_Items_Report.xlsx'
         );
     }
+
+    public function finesReport(Request $request)
+{
+    $query = FinesHistory::with('borrower');
+
+    // Apply filters
+    if ($request->has('start_date') && $request->start_date) {
+        $query->whereDate('created_at', '>=', $request->start_date);
+    }
+    if ($request->has('end_date') && $request->end_date) {
+        $query->whereDate('created_at', '<=', $request->end_date);
+    }
+    if ($request->has('item_name') && $request->item_name) {
+        $query->where('item_borrowed', $request->item_name);
+    }
+    if ($request->has('condition') && $request->condition) {
+        $query->where('condition', $request->condition);
+    }
+    if ($request->has('payment') && $request->payment) {
+        $query->where('payment_method', $request->payment);
+    }
+
+    $finesReport = $query->get();
+    // $userFullName = Auth::guard('cashier')->user()->full_name;
+
+    $totalFines = $query->sum('fines_amount');
+    // Get all items for dropdown
+    $items = ItemForRent::pluck('item_name', 'item_name');
+
+    return view('admin.togafines_report', compact('finesReport', 'items', 'totalFines'));
+}
+
+public function exportFinesReportPdf(Request $request)
+{
+    $startDate = $request->input('start_date');
+    $endDate = $request->input('end_date');
+    $itemName = $request->input('item_name'); // Ensure this matches the form's input name
+    $condition = $request->input('condition');
+    $paymentMethod = $request->input('payment');
+    
+
+    $query = FinesHistory::with('borrower');
+
+    // Apply filters (same as finesReport)
+    if ($request->has('start_date') && $request->start_date) {
+        $query->whereDate('created_at', '>=', $request->start_date);
+    }
+    if ($request->has('end_date') && $request->end_date) {
+        $query->whereDate('created_at', '<=', $request->end_date);
+    }
+    if ($request->has('item_name') && $request->item_name) {
+        $query->where('item_borrowed', $request->item_name);
+    }
+    if ($request->has('condition') && $request->condition) {
+        $query->where('condition', $request->condition);
+    }
+    if ($request->has('payment') && $request->payment) {
+        $query->where('payment_method', $request->payment);
+    }
+
+    $finesReport = $query->get();
+    $totalFines = $query->sum('fines_amount');
+
+    $pdf = Pdf::loadView('admin.togafines_report_pdf', compact('finesReport', 'totalFines', 'startDate', 'endDate', 'itemName', 'condition', 'paymentMethod'))
+        ->setPaper('A4', 'portrait');
+    return $pdf->stream('Toga_Fines_Report.pdf');
+}
+
+public function exportFinesReportExcel(Request $request)
+{
+    $startDate = $request->input('start_date');
+    $endDate = $request->input('end_date');
+    $itemName = $request->input('item_name');
+    $condition = $request->input('condition');
+    $paymentMethod = $request->input('payment');
+
+    // Pass all parameters to the FinesReportExport constructor
+    return Excel::download(new FinesReportExportAdmin($startDate, $endDate, $itemName, $condition, $paymentMethod), 'Toga_Fines_Report.xlsx');
+}
     
 
 }

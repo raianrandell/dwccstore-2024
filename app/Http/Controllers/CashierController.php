@@ -29,6 +29,7 @@ use App\Exports\VoidItemReportExport;
 use App\Exports\SalesReportExport;
 use Illuminate\Support\Facades\Validator;
 use App\Models\UserLog;
+use App\Exports\FinesReportExport;
 
 
 
@@ -105,30 +106,35 @@ class CashierController extends Controller
      */
     public function cashierDashboard()
     {
-        // Total Sales Today
+        // Total Sales Today excluding services
         $totalSalesToday = Transaction::whereDate('created_at', now())
             ->whereIn('status', ['Completed', 'Not Paid'])
+            ->whereDoesntHave('serviceItems') // Exclude transactions with service items
             ->sum('total');
         
-        // Sales by Payment Method (Cash, Gcash, Credit)
+        // Sales by Payment Method (Cash, GCash, Credit), excluding services
         $cashSalesToday = Transaction::whereDate('created_at', now())
             ->where('status', 'Completed')
             ->where('payment_method', 'Cash')
+            ->whereDoesntHave('serviceItems') // Exclude transactions with service items
             ->sum('total');
     
         $gcashSalesToday = Transaction::whereDate('created_at', now())
             ->where('status', 'Completed')
             ->where('payment_method', 'Gcash')
+            ->whereDoesntHave('serviceItems') // Exclude transactions with service items
             ->sum('total');
     
         $creditSalesToday = Transaction::whereDate('created_at', now())
             ->where('status', 'Not Paid')
             ->where('payment_method', 'Credit')
+            ->whereDoesntHave('serviceItems') // Exclude transactions with service items
             ->sum('total');
         
-        // Daily Sales Data for Each Month
+        // Daily Sales Data for Each Month excluding services
         $dailySalesData = Transaction::selectRaw('DAY(created_at) as day, MONTH(created_at) as month, SUM(total) as sales')
             ->whereIn('status', ['Completed', 'Paid'])
+            ->whereDoesntHave('serviceItems') // Exclude transactions with service items
             ->groupBy('day', 'month')
             ->orderBy('month')
             ->get();
@@ -139,7 +145,7 @@ class CashierController extends Controller
         for ($i = 1; $i <= 12; $i++) {
             $months[] = \Carbon\Carbon::createFromFormat('m', $i)->format('M'); // Month abbreviation
             $daysInMonth = \Carbon\Carbon::createFromDate(now()->year, $i, 1)->daysInMonth;
-        
+    
             // Collect daily sales for the month
             $monthlySales = [];
             for ($d = 1; $d <= $daysInMonth; $d++) {
@@ -149,7 +155,7 @@ class CashierController extends Controller
             $dailySales[$i] = $monthlySales;
             $dailySales['All'] = array_merge($dailySales['All'], $monthlySales);
         }
-
+    
         $users = User::with(['logs'])->get();
     
         return view('cashier.cashier_dashboard', [
@@ -162,6 +168,7 @@ class CashierController extends Controller
             'users',
         ]);
     }
+    
     /**
      * Logout the cashier.
      */
@@ -630,7 +637,7 @@ class CashierController extends Controller
             $gcashReferenceNumber = $request->gcash_reference_number_hidden ?? null;
             $cashTendered = $request->cash_tendered_hidden ?? 0;
             $changeAmount = $request->change_amount ?? 0;
-    
+            $cashierName = Auth::guard('cashier')->user()->full_name;
             // Group late fee items by borrower ID for efficient processing
             $lateFeeItemsGrouped = collect($request->late_fee_items)->groupBy(function ($item) {
                 return BorrowedItem::find($item['item_id'])->borrower_id;
@@ -658,7 +665,11 @@ class CashierController extends Controller
                         'gcash_reference_number' => $paymentMethod === 'gcash' ? $gcashReferenceNumber : null,
                         'actual_return_date' => now(),
                         'condition' => $item['condition'] ?? 'Good',
+                        'borrowed_date' => $borrowedItem->borrowed_date, // Include borrowed_date
+                        'expected_return_date' => $borrowedItem->return_date, // Include return_date
+                        'cashier_name' => $cashierName,
                     ]);
+                    
     
                     $borrowedItem->update(['status' => 'Returned']);
                 }
@@ -1042,13 +1053,10 @@ class CashierController extends Controller
         $itemName = $request->input('item_name'); // New filter
     
         // Query Transactions with filters
-        $transactions = Transaction::with(['user', 'items.item.category' => function($query) use ($category, $itemName) {
+        $transactions = Transaction::with(['user', 'items.item.category' => function($query) use ($category) {
                 // Apply filters to the related items
                 if ($category) {
                     $query->where('id', $category);
-                }
-                if ($itemName) {
-                    $query->where('item_name', $itemName);
                 }
             }])
             ->when($startDate, function ($query, $startDate) {
@@ -1072,6 +1080,8 @@ class CashierController extends Controller
             })
             ->orderBy('created_at', 'desc')
             ->get();
+
+            
     
         // Filter items within each transaction based on the applied filters
         $transactions->each(function ($transaction) use ($category, $itemName) {
@@ -1416,6 +1426,84 @@ public function getServiceTransactionItems(Request $request)
     ];
 
     return response()->json($response);
+}
+
+public function finesReport(Request $request)
+{
+    $query = FinesHistory::with('borrower');
+
+    // Apply filters
+    if ($request->has('start_date') && $request->start_date) {
+        $query->whereDate('created_at', '>=', $request->start_date);
+    }
+    if ($request->has('end_date') && $request->end_date) {
+        $query->whereDate('created_at', '<=', $request->end_date);
+    }
+    if ($request->has('item_name') && $request->item_name) {
+        $query->where('item_borrowed', $request->item_name);
+    }
+    if ($request->has('condition') && $request->condition) {
+        $query->where('condition', $request->condition);
+    }
+    if ($request->has('payment') && $request->payment) {
+        $query->where('payment_method', $request->payment);
+    }
+
+    $finesReport = $query->get();
+
+    $totalFines = $query->sum('fines_amount');
+    // Get all items for dropdown
+    $items = ItemForRent::pluck('item_name', 'item_name');
+
+    return view('cashier.togafines_report', compact('finesReport', 'items', 'totalFines'));
+}
+
+public function exportFinesReportPdf(Request $request)
+{
+    $startDate = $request->input('start_date');
+    $endDate = $request->input('end_date');
+    $itemName = $request->input('item_name'); // Ensure this matches the form's input name
+    $condition = $request->input('condition');
+    $paymentMethod = $request->input('payment');
+    
+
+    $query = FinesHistory::with('borrower');
+
+    // Apply filters (same as finesReport)
+    if ($request->has('start_date') && $request->start_date) {
+        $query->whereDate('created_at', '>=', $request->start_date);
+    }
+    if ($request->has('end_date') && $request->end_date) {
+        $query->whereDate('created_at', '<=', $request->end_date);
+    }
+    if ($request->has('item_name') && $request->item_name) {
+        $query->where('item_borrowed', $request->item_name);
+    }
+    if ($request->has('condition') && $request->condition) {
+        $query->where('condition', $request->condition);
+    }
+    if ($request->has('payment') && $request->payment) {
+        $query->where('payment_method', $request->payment);
+    }
+
+    $finesReport = $query->get();
+    $totalFines = $query->sum('fines_amount');
+
+    $pdf = Pdf::loadView('cashier.togafines_report_pdf', compact('finesReport', 'totalFines', 'startDate', 'endDate', 'itemName', 'condition', 'paymentMethod'))
+        ->setPaper('A4', 'portrait');
+    return $pdf->stream('Toga_Fines_Report.pdf');
+}
+
+public function exportFinesReportExcel(Request $request)
+{
+    $startDate = $request->input('start_date');
+    $endDate = $request->input('end_date');
+    $itemName = $request->input('item_name');
+    $condition = $request->input('condition');
+    $paymentMethod = $request->input('payment');
+
+    // Pass all parameters to the FinesReportExport constructor
+    return Excel::download(new FinesReportExport($startDate, $endDate, $itemName, $condition, $paymentMethod), 'Toga_Fines_Report.xlsx');
 }
 
 

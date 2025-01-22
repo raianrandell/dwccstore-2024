@@ -10,6 +10,14 @@ class FinesHistory extends Model
     use HasFactory;
 
     protected $table = 'fines_history';
+    protected $casts = [
+        'borrowed_date' => 'datetime',
+        'expected_return_date' => 'datetime',
+        'actual_return_date' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+    
 
     // In FinesHistory Model
     protected $fillable = [
@@ -25,8 +33,11 @@ class FinesHistory extends Model
         'cash_tendered',
         'change',
         'gcash_reference_number',
+        'borrowed_date', // Add borrowed date
+        'expected_return_date', // Add expected return date
         'actual_return_date',
-        'condition', 
+        'condition',
+        'cashier_name',
     ];
 
     

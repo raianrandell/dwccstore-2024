@@ -58,7 +58,7 @@ class VoidItemReportExport implements FromCollection, WithHeadings, WithEvents, 
                 'Date/Time' => Carbon::parse($item->voided_at)->format('m-d-Y h:i:s'),
                 'Item Name' => $item->item_name,
                 'Category' => $item->items->category->category_name ?? 'N/A',
-                'Price' => $item->price ?? 0, // Replace 'price' with the actual price column name
+                'Price' => '₱' . number_format($item->price ?? 0, 2),
                 'Cashier Name' => $item->voided_by ?? 'N/A',
             ];
         });

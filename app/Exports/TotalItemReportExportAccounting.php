@@ -127,12 +127,13 @@ class TotalItemReportExportAccounting implements WithEvents
                         $sheet->setCellValue("A{$currentRow}", $item->item_name);
                         $sheet->setCellValue("B{$currentRow}", $item->qtyInStock);
                         $sheet->setCellValue("C{$currentRow}", $item->unit_of_measurement);
-                        $sheet->setCellValue("D{$currentRow}", $item->base_price);
-                        $sheet->setCellValue("E{$currentRow}", $item->selling_price);
-                        $sheet->setCellValue("F{$currentRow}", $item->qtyInStock * $item->base_price);
-                        $sheet->setCellValue("G{$currentRow}", $item->qtyInStock * $item->selling_price);
+                        $sheet->setCellValue("D{$currentRow}", '₱' . number_format($item->base_price ?? 0, 2)); // Add Peso sign to base price
+                        $sheet->setCellValue("E{$currentRow}", '₱' . number_format($item->selling_price ?? 0, 2)); // Add Peso sign to selling price
+                        $sheet->setCellValue("F{$currentRow}", '₱' . number_format(($item->qtyInStock ?? 0) * ($item->base_price ?? 0), 2)); // Add Peso sign to base total
+                        $sheet->setCellValue("G{$currentRow}", '₱' . number_format(($item->qtyInStock ?? 0) * ($item->selling_price ?? 0), 2)); // Add Peso sign to selling total
                         $currentRow++;
                     }
+                    
                     $dataRowEnd = $currentRow - 1; // Last data row
 
                     // **Apply Borders to Data Rows**

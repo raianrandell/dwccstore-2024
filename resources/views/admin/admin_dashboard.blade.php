@@ -102,8 +102,8 @@
     const lineData = {
         labels: {!! json_encode($dates) !!}, // Dates from PHP
         datasets: [{
-            label: 'Total Sales',
-            data: {!! json_encode($sales) !!}, // Total sales data from PHP
+            label: 'Total quantity of Items Sold',
+            data: {!! json_encode($salesQuantities) !!}, // Quantities from PHP
             fill: true,
             borderColor: 'rgb(75, 192, 192)', // Line color
             pointBorderColor: 'rgb(75, 192, 192)', // Data point border color
@@ -122,7 +122,7 @@
             plugins: {
                 title: {
                     display: true,
-                    text: 'Daily Sales'
+                    text: ''
                 }
             },
             scales: {
@@ -131,7 +131,7 @@
                     grid: { display: false }
                 },
                 y: {
-                    title: { display: true, text: 'Amount (₱)' },
+                    title: { display: true, text: 'Total quantity of Items Sold' },
                     beginAtZero: true,
                     grid: { borderDash: [5, 5] }
                 }
@@ -149,4 +149,5 @@
         window.location.href = '{{ route('admin.dashboard') }}';
     });
 </script>
+
 @endsection

@@ -33,6 +33,7 @@ use App\Exports\DamageItemReportExportAccounting;
 use App\Models\TotalItemReport;
 use App\Exports\TotalItemReportExport;
 use App\Exports\TotalItemReportExportAccounting;
+use App\Exports\FinesReportExportAccounting;
 
 class AccountingController extends Controller
 {
@@ -240,7 +241,7 @@ class AccountingController extends Controller
 
         public function salesReport(Request $request)
         {
-                    // Retrieve filter values
+        // Retrieve filter values
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $category = $request->input('category');
@@ -248,15 +249,12 @@ class AccountingController extends Controller
         $itemName = $request->input('item_name'); // New filter
     
         // Query Transactions with filters
-        $transactions = Transaction::with(['user', 'items.item.category' => function($query) use ($category, $itemName) {
-                // Apply filters to the related items
-                if ($category) {
-                    $query->where('id', $category);
-                }
-                if ($itemName) {
-                    $query->where('item_name', $itemName);
-                }
-            }])
+        $transactions = Transaction::with(['user', 'items.item.category' => function($query) use ($category) {
+        // Apply filters to the related items
+        if ($category) {
+            $query->where('id', $category);
+        }
+    }])
             ->when($startDate, function ($query, $startDate) {
                 return $query->whereDate('created_at', '>=', $startDate);
             })
@@ -531,11 +529,8 @@ class AccountingController extends Controller
     
         $returnedItems = $returnedItemsQuery->get();
     
-        // Get the full name of the authenticated user
-        $userFullName = Auth::guard('accounting')->user()->full_name;
-    
         // Generate the PDF with the filtered damage items
-        $pdf = PDF::loadView('accounting.return_item_report_pdf', compact('returnedItems', 'startDate', 'endDate', 'itemName', 'categoryName', 'userFullName'))
+        $pdf = PDF::loadView('accounting.return_item_report_pdf', compact('returnedItems', 'startDate', 'endDate', 'itemName', 'categoryName'))
             ->setPaper('A4', 'portrait')
             ->setOptions(['isHtml5ParserEnabled' => true, 'isPhpEnabled' => true]);
     
@@ -927,5 +922,84 @@ class AccountingController extends Controller
             // Generate and download the Excel file
             return Excel::download($export, 'Total_Items_Report_' . Carbon::now()->format('m_d_Y') . '.xlsx');
         }
+
+        public function finesReport(Request $request)
+        {
+            $query = FinesHistory::with('borrower');
+        
+            // Apply filters
+            if ($request->has('start_date') && $request->start_date) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+            if ($request->has('end_date') && $request->end_date) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+            if ($request->has('item_name') && $request->item_name) {
+                $query->where('item_borrowed', $request->item_name);
+            }
+            if ($request->has('condition') && $request->condition) {
+                $query->where('condition', $request->condition);
+            }
+            if ($request->has('payment') && $request->payment) {
+                $query->where('payment_method', $request->payment);
+            }
+        
+            $finesReport = $query->get();
+        
+            $totalFines = $query->sum('fines_amount');
+            // Get all items for dropdown
+            $items = ItemForRent::pluck('item_name', 'item_name');
+        
+            return view('accounting.togafines_report', compact('finesReport', 'items', 'totalFines'));
+        }
+        
+        public function exportFinesReportPdf(Request $request)
+        {
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
+            $itemName = $request->input('item_name'); // Ensure this matches the form's input name
+            $condition = $request->input('condition');
+            $paymentMethod = $request->input('payment');
+            
+        
+            $query = FinesHistory::with('borrower');
+        
+            // Apply filters (same as finesReport)
+            if ($request->has('start_date') && $request->start_date) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+            if ($request->has('end_date') && $request->end_date) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+            if ($request->has('item_name') && $request->item_name) {
+                $query->where('item_borrowed', $request->item_name);
+            }
+            if ($request->has('condition') && $request->condition) {
+                $query->where('condition', $request->condition);
+            }
+            if ($request->has('payment') && $request->payment) {
+                $query->where('payment_method', $request->payment);
+            }
+        
+            $finesReport = $query->get();
+            $totalFines = $query->sum('fines_amount');
+        
+            $pdf = Pdf::loadView('accounting.togafines_report_pdf', compact('finesReport', 'totalFines', 'startDate', 'endDate', 'itemName', 'condition', 'paymentMethod'))
+                ->setPaper('A4', 'portrait');
+            return $pdf->stream('Toga_Fines_Report.pdf');
+        }
+        
+        public function exportFinesReportExcel(Request $request)
+        {
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
+            $itemName = $request->input('item_name');
+            $condition = $request->input('condition');
+            $paymentMethod = $request->input('payment');
+        
+            // Pass all parameters to the FinesReportExport constructor
+            return Excel::download(new FinesReportExportAccounting($startDate, $endDate, $itemName, $condition, $paymentMethod), 'Toga_Fines_Report.xlsx');
+        }
+            
         
 }

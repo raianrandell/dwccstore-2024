@@ -115,10 +115,14 @@ class InventoryController extends Controller
         $totalItems = Item::count();
         $totalCategories = Category::count();
         $lowStockItems = Item::where('status', 'Low Stock')->where('qtyInStock', '>', 0)->count();
-        $users = User::with(['logs'])->get();
-        
-        return view('inventory.inventory_dashboard', compact('totalItems', 'totalCategories', 'lowStockItems','users'));
+        $damageItemsByCategory = DamageTransaction::selectRaw('category_id, COUNT(*) as total')
+            ->groupBy('category_id')
+            ->with('category')
+            ->get();
+    
+        return view('inventory.inventory_dashboard', compact('totalItems', 'totalCategories', 'lowStockItems', 'damageItemsByCategory'));
     }
+    
 
     public function updateItem(Request $request, $id)
     {
@@ -1179,8 +1183,8 @@ public function getCategoryItems($categoryId)
             $endDate = Carbon::parse($request->end_date);   // Remove endOfDay()
     
             // Use whereDate to compare only the date part
-            $query->whereDate('expiration_date', '>=', $startDate)
-                  ->whereDate('expiration_date', '<=', $endDate);
+            $query->whereDate('created_at', '>=', $startDate)
+                  ->whereDate('created_at', '<=', $endDate);
         }
     
         // Filter by item name
@@ -1218,7 +1222,7 @@ public function getCategoryItems($categoryId)
         if ($startDate && $endDate) {
             $startDate = Carbon::parse($startDate)->startOfDay();
             $endDate = Carbon::parse($endDate)->endOfDay();
-            $query->whereBetween('expiration_date', [$startDate, $endDate]);
+            $query->whereBetween('created_at', [$startDate, $endDate]);
         }
     
         if ($itemName) {

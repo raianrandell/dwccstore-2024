@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Toga Fines Report</title>
+    <style>
+        /* General styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+        }
+        .header img {
+            position: absolute;
+            left: 10px;
+            top: 20px;
+            height: 100px; /* Adjust the height of the logo as needed */
+        }
+        .content {
+            padding-bottom: 50px; /* Prevents content from overlapping footer */
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            margin: 10px;
+            text-align: right;
+            font-size: 0.8em;
+            padding-bottom: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd; 
+            padding: 10px;
+            text-align: left;
+            font-size: 0.5em;
+        }
+        th {
+            background-color: #20c997;
+            color: #fff;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        h1, h5 {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .filter-info p {
+            margin: 5px 0;
+            font-size: 0.8em;
+        }
+
+        .total {
+            text-align: right;
+            margin-top: 10px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <div class="header">
+        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('images/dwcclogo.png'))) }}" alt="College Logo" class="logo">
+        <h2>Divine Word College of Calapan</h2>
+        <p>Gov. Infantado St. Calapan City, Oriental Mindoro, Philippines</p>
+        <h3>DWCC STORE: Sales and Inventory</h3>
+    </div>
+    <br>
+    <h3 style="text-align: center">Toga Fines Report</h3>
+
+    <!-- Filtering Information -->
+    <div class="filter-info">
+        <p><strong>Date Range:</strong> 
+            @if(isset($startDate) && $startDate)
+                {{ \Carbon\Carbon::parse($startDate)->format('m-d-Y') }}
+            @else
+                All Dates
+            @endif
+            -
+            @if(isset($endDate) && $endDate)
+                {{ \Carbon\Carbon::parse($endDate)->format('m-d-Y') }}
+            @else
+                All Dates
+            @endif
+        </p>
+        <p><strong>Item Borrowed:</strong> {{ $itemName ?? 'All Items' }}</p>
+        <p><strong>Condition:</strong> {{ $condition ?? 'All Conditions' }}</p>
+        <p><strong>Mode of Payment:</strong> {{ $paymentMethod ?? 'All Methods' }}</p>
+    </div>
+
+    <!-- Table Section -->
+    <table>
+        <thead>
+            <tr>
+                <th>ID Number</th>
+                <th>Student Name</th>
+                <th>Item Borrowed</th>
+                <th>Borrowed Date</th>
+                <th>Expected Return Date</th>
+                <th>Days Late</th>
+                <th>Condition</th>
+                <th>Late Fee</th>
+                <th>Additional Fee</th>
+                <th>Mode of Payment</th>
+                <th>Total</th>
+                <th>Actual Return Date</th>
+                <th>Cashier</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($finesReport as $fines)
+                <tr>
+                    <td>{{ $fines->student_id }}</td>
+                    <td>{{ $fines->student_name }}</td>
+                    <td>{{ $fines->item_borrowed }}</td>
+                    <td>{{ \Carbon\Carbon::parse($fines->borrowed_date)->format('m-d-Y') }}</td>
+                    <td>{{ \Carbon\Carbon::parse($fines->expected_return_date)->format('m-d-Y') }}</td>
+                    <td>{{ $fines->days_late }}</td>
+                    <td>{{ ucfirst($fines->condition) }}</td>
+                    <td>{{ number_format($fines->days_late * 10, 2) }}</td>
+                    <td>{{ number_format(abs($fines->days_late * 10 - $fines->fines_amount), 2) }}</td>
+                    <td>{{ $fines->payment_method }}</td>
+                    <td>{{ number_format($fines->fines_amount, 2) }}</td>
+                    <td>{{ $fines->actual_return_date ? \Carbon\Carbon::parse($fines->actual_return_date)->format('m-d-Y') : 'N/A' }}</td>
+                    <td>{{ $fines->cashier_name ?? 'Unknown' }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+    <div class="total">
+        <p>Total Fines: P{{ number_format($totalFines, 2) }}</p>
+    </div>
+
+    <!-- Footer Section -->
+    <div class="footer" style="position: absolute; bottom: 0;">
+        <p>Generated by: {{ Auth::guard('cashier')->user()->full_name }}</p>
+        <p>Generation Date: {{ \Carbon\Carbon::now()->format('m-d-Y h:i:s a') }}</p>
+    </div>
+</body>
+</html>

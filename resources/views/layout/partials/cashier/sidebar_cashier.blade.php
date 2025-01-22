@@ -68,16 +68,16 @@
 
             <!-- Reports Dropdown -->
             <a class="nav-link collapsed text-white
-                {{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') ? 'active' : '' }}" 
+                {{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') || request()->routeIs('cashier.toga_fines_report') ? 'active' : '' }}" 
                 href="#" data-bs-toggle="collapse" 
                 data-bs-target="#collapseReports" 
-                aria-expanded="{{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') ? 'true' : 'false' }}" 
+                aria-expanded="{{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') || request()->routeIs('cashier.toga_fines_report') ? 'true' : 'false' }}" 
                 aria-controls="collapseReports">
                 <div class="sb-nav-link-icon text-white"><i class="fa-regular fa-file"></i></div>
                 Reports
                 <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down text-white"></i></div>
             </a>
-            <div class="collapse {{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') ? 'show' : '' }}" id="collapseReports" aria-labelledby="headingReports" data-bs-parent="#sidenavAccordion">
+            <div class="collapse {{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') || request()->routeIs('cashier.toga_fines_report') ? 'show' : '' }}" id="collapseReports" aria-labelledby="headingReports" data-bs-parent="#sidenavAccordion">
                 <nav class="sb-sidenav-menu-nested">
                     <a class="nav-link text-white {{ request()->routeIs('cashier.sales_report') ? 'active' : '' }}" href="{{ route('cashier.sales_report') }}">
                         <div class="sb-nav-link-icon text-white"><i class="fas fa-dollar-sign"></i></div>
@@ -90,6 +90,10 @@
                     <a class="nav-link text-white {{ request()->routeIs('cashier.return_item_report') ? 'active' : '' }}" href="{{ route('cashier.return_item_report') }}">
                         <div class="sb-nav-link-icon text-white"><i class="fas fa-undo-alt"></i></div>
                         Returned Items
+                    </a>
+                    <a class="nav-link text-white {{ request()->routeIs('cashier.toga_fines_report') ? 'active' : '' }}" href="{{ route('cashier.toga_fines_report') }}">
+                        <div class="sb-nav-link-icon text-white"><i class="fas fa-coins"></i></div>
+                        Toga Fines
                     </a>
                 </nav>
             </div>

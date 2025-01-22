@@ -102,17 +102,27 @@
       color: #262626;
       background-color: transparent;
       border: 1px solid #262626;
-      transition: background-color 0.3s ease;
+      transition: background-color 0.3s ease, transform 0.3s ease; /* Added transform transition */
     }
 
     .return-btn i {
     margin-right: 8px; /* Adds space between the icon and the text */
     font-size: 18px; /* Adjust the icon size */
-    }   
+    }
 
     .return-btn:hover {
       color: #fff;
       background-color: #444;
+      animation: bounce 0.5s infinite alternate;
+    }
+
+    @keyframes bounce {
+      from {
+        transform: translateY(0);
+      }
+      to {
+        transform: translateY(-5px);
+      }
     }
 
     @media only screen and (max-width: 767px) {
@@ -154,7 +164,6 @@
     }
 </script>
 
-
 <body>
   <div id="notfound">
     <div class="notfound">
@@ -164,7 +173,7 @@
       </div>
       <h2>Your session has expired. Please return back to the login page.</h2>
       <a href="javascript:void(0);" class="return-btn" onclick="goBackAndReload()">
-        <i class="fa fa-arrow-left"></i>&nbsp;Return Back
+        <i class="fa fa-arrow-left"></i> Return Back
       </a>
     </div>
   </div>

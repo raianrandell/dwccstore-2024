@@ -104,6 +104,7 @@
                     <th>Item Name</th>
                     <th>Category</th>
                     <th>Quantity</th>
+                    <th>Date Encoded</th>
                     <th>Expiration Date</th>
                 </tr>
             </thead>
@@ -114,6 +115,7 @@
                         <td>{{ $expiredItem->item_name }}</td>
                         <td>{{ $expiredItem->category }}</td>
                         <td>{{ $expiredItem->quantity }}</td>
+                        <td>{{ $expiredItem->created_at->format('m-d-Y') }}</td>
                         <td>{{ \Carbon\Carbon::parse($expiredItem->expiration_date)->format('m-d-Y') }}</td>
                     </tr>
                 @endforeach

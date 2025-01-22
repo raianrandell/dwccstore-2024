@@ -75,11 +75,14 @@
                                         @endif
                         
                                         <option value="{{ $item->id }}" {{ $item->qtyInStock === 0 ? 'disabled' : '' }}>
-                                            {{ $item->item_name }} - {{ $item->unit_of_measurement }}
-                                            (Stock: {{ $item->qtyInStock }})
-                                            Price: ₱{{ number_format($item->selling_price, 2) }}
-                                            @if ($item->expiration_date)
-                                                - Exp: {{ \Carbon\Carbon::parse($item->expiration_date)->format('m/d/Y') }}
+                                            @if ($item->qtyInStock === 0)
+                                                {{ $item->item_name }} - {{ $item->unit_of_measurement }} (Out of Stock)
+                                            @else
+                                                {{ $item->item_name }} - {{ $item->unit_of_measurement }} (Stock: {{ $item->qtyInStock }})
+                                                Price: ₱{{ number_format($item->selling_price, 2) }}
+                                                @if ($item->expiration_date)
+                                                    - Exp: {{ \Carbon\Carbon::parse($item->expiration_date)->format('m/d/Y') }}
+                                                @endif
                                             @endif
                                         </option>
                                     @endforeach

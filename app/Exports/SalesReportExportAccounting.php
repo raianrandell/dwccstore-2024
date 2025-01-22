@@ -84,8 +84,8 @@ class SalesReportExportAccounting implements FromCollection, WithHeadings, WithE
                             'category'       => $categoryName,
                             'quantity'       => $item->quantity,
                             'unit_of_measurement'  => $item->item->unit_of_measurement,
-                            'price'          => $item->price,
-                            'total'          => $item->total,
+                            'price' => '₱' . number_format($item->price ?? 0, 2), // Add Peso sign and format price
+                            'total' => '₱' . number_format($item->total ?? 0, 2), // Add Peso sign and format total
                             'payment_method' => ucfirst($transaction->payment_method),
                             'cashier_name'   => $transaction->user->full_name ?? 'N/A',
                         ];

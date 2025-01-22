@@ -25,6 +25,8 @@
                     <th>ID Number</th>
                     <th>Student Name</th>
                     <th>Item Borrowed</th>
+                    <th>Borrowed Date</th>
+                    <th>Expected Return Date</th>
                     <th>Days Late</th>
                     <th>Condition</th>
                     <th>Late Fee</th>
@@ -41,35 +43,26 @@
             <tbody>
                 @foreach ($finesHistory as $fine)
                     <tr>
-                        <!-- Student Information -->
                         <td>{{ $fine->student_id }}</td>
                         <td>{{ $fine->student_name }}</td>
                         <td>{{ $fine->item_borrowed }}</td>
-                        
-                        <!-- Late Information -->
+                        <td>{{ \Carbon\Carbon::parse($fine->borrowed_date)->format('m-d-Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($fine->expected_return_date)->format('m-d-Y') }}</td>
                         <td>{{ $fine->days_late }}</td>
                         <td>{{ ucfirst($fine->condition) }}</td>
-                        
-                        <!-- Fee Calculations -->
                         <td>₱{{ number_format($fine->days_late * 10, 2) }}</td>
                         <td>₱{{ number_format(abs($fine->days_late * 10 - $fine->fines_amount), 2) }}</td>
-                        
-                        <!-- Payment Details -->
                         <td>{{ $fine->payment_method }}</td>
                         <td>₱{{ number_format($fine->fines_amount, 2) }}</td>
                         <td>₱{{ number_format($fine->cash_tendered, 2) }}</td>
                         <td>₱{{ number_format($fine->change, 2) }}</td>
-                        
-                        <!-- Gcash and Return Information -->
-                        <td>{{ $fine->gcash_reference_number ?? 'N/A'}}</td>
-                        <td>{{ $fine->actual_return_date ? 
-                            \Carbon\Carbon::parse($fine->actual_return_date)->format('m-d-Y h:i:s') : 'N/A' }}</td>
-                        
-                        <!-- Cashier Details -->
-                        <td>{{ Auth::guard('cashier')->user()->full_name }}</td>
+                        <td>{{ $fine->gcash_reference_number ?? 'N/A' }}</td>
+                        <td>{{ $fine->actual_return_date ? \Carbon\Carbon::parse($fine->actual_return_date)->format('m-d-Y h:i:s') : 'N/A' }}</td>
+                        <td>{{ $fine->cashier_name ?? 'Unknown'}}</td> <!-- Display the cashier's name -->
                     </tr>
                 @endforeach
             </tbody>
+            
         </table>
     </div>
 </div>

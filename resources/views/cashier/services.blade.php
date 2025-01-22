@@ -654,7 +654,8 @@
                                 showAlert('Transaction saved successfully.', 'success');
 
                                 const transactionNo = response.transaction_no || 'N/A';
-                                const cashierName = '{{ Auth::guard('cashier')->user()->full_name; }}';
+                                const cashierName =
+                                    '{{ Auth::guard('cashier')->user()->full_name }}';
 
                                 // Trigger invoice generation and printing
                                 generateServicesInvoice({
@@ -1023,13 +1024,58 @@
                     calculateServiceTotal();
                 });
 
-                // Update price when a service is selected in Modal
                 $('#serviceSelect').change(function() {
                     const selectedOption = $(this).find('option:selected');
-                    const price = parseFloat(selectedOption.data('price')) || 0;
-                    $('#servicePrice').val(price.toFixed(2));
-                    calculateServiceTotal();
+                    const serviceName = selectedOption.text().trim();
+
+
+                    // **Corrected Logic:** Only disable the opposite radio button
+                    if (serviceName === 'Computer Rental') {
+                        $('#perHour').prop('checked', true);
+                        $('#perCopy').prop('disabled', true).prop('checked',
+                        false); // Disable and uncheck perCopy
+
+                    } else {
+                        $('#perCopy').prop('checked', true);
+                        $('#perHour').prop('disabled', true).prop('checked',
+                        false); // Disable and uncheck perHour
+                    }
+
+
+
+                    $('input[name="feeStructure"]:checked').trigger('change');
                 });
+
+                $('input[name="feeStructure"]').change(function() {
+
+
+                    //Re-enable both before checking again
+                    $('#perCopy').prop('disabled', false);
+                    $('#perHour').prop('disabled', false);
+
+
+
+                    if ($('#perHour').is(':checked')) {
+                        $('#hours').prop('disabled', false);
+                        $('#copies').prop('disabled', true).val('');
+                        $('#perCopy').prop('disabled', true);
+
+
+
+
+                    } else if ($('#perCopy').is(':checked')) {
+                        $('#copies').prop('disabled', false);
+                        $('#hours').prop('disabled', true).val('');
+                        $('#perHour').prop('disabled', true);
+
+
+                    }
+
+                });
+
+                // Trigger initial change 
+                $('select[name="service_name"]').trigger('change');
+
 
                 // Recalculate total when relevant inputs change in Modal
                 $('#servicePrice, #feeAmountValue, #numberOfCopies, #numberOfHours').on('input', function() {
@@ -1075,7 +1121,6 @@
                     $('#totalDisplay').text('0.00');
                 });
 
-                // Add Service Button in Modal
                 $('#addServiceButtonModal').click(function() {
                     const form = $('#servicesForm')[0];
                     if (!form.checkValidity()) {
@@ -1091,6 +1136,25 @@
                     const copies = feeStructure === 'per_copy' ? parseInt($('#numberOfCopies').val()) : null;
                     const hours = feeStructure === 'per_hour' ? parseFloat($('#numberOfHours').val()) : null;
                     const total = parseFloat($('#totalDisplay').text()) || 0;
+
+                    // Validation for price being greater than 0
+                    if (price <= 0) {
+                        showAlert('Price must be greater than 0.', 'danger');
+                        return;
+                    }
+
+                    // Validation for Number of Copies if Fee Structure is Per Copy
+                    if (feeStructure === 'per_copy' && (!copies || copies <= 0)) {
+                        showAlert('Please enter a valid number of copies.', 'danger');
+                        return;
+                    }
+
+                    // Validation for Number of Hours if Fee Structure is Per Hour
+                    if (feeStructure === 'per_hour' && (!hours || hours <= 0)) {
+                        showAlert('Please enter a valid number of hours.', 'danger');
+                        return;
+                    }
+
 
                     // Check if service already exists
                     const existingService = serviceItems.find(svc => svc.id === serviceId);
@@ -1122,6 +1186,7 @@
                     $('#totalDisplay').text('0.00');
                     updateSummary(); // Update summary after adding a service
                 });
+
 
                 function updateServicesTable() {
                     let tableBody = $('#servicesDatatables tbody');

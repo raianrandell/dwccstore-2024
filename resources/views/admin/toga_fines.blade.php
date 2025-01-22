@@ -232,14 +232,19 @@
                                                 name="item_ids[]" 
                                                 value="{{ $item->id }}"
                                                 {{ in_array($item->id, old('item_ids', [])) ? 'checked' : '' }}
-                                                {{ ($item->total_quantity - $item->quantity_borrowed) <= 0 ? 'disabled' : '' }}>
-                                            <label class="form-check-label" for="item_{{ $item->id }}">
-                                                {{ $item->item_name }}
-                                                (Available: {{ $item->total_quantity - $item->quantity_borrowed - $item->damaged_quantity - $item->lost_quantity }})
-                                                @if (($item->total_quantity - $item->quantity_borrowed) <= 0)
-                                                    <span class="text-danger">(Out of Stock)</span>
-                                                @endif
-                                            </label>
+                                                {{ ($item->total_quantity - $item->quantity_borrowed - $item->damaged_quantity - $item->lost_quantity) <= 0 ? 'disabled' : '' }}>
+                                                <label class="form-check-label" for="item_{{ $item->id }}">
+                                                    {{ $item->item_name }}
+                                                    @php
+                                                        $available = $item->total_quantity - $item->quantity_borrowed - $item->damaged_quantity - $item->lost_quantity;
+                                                    @endphp
+                                                    @if ($available > 0)
+                                                    <span class="text-success">(Available: {{ $available }})</span>
+                                                    @endif
+                                                    @if ($available <= 0)
+                                                        <span class="text-danger">(Out of Stock)</span>
+                                                    @endif
+                                                </label>
                                         </div>
                                     @endforeach
                                 </div>

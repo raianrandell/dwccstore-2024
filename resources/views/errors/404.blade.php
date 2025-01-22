@@ -7,7 +7,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
-
   <title>404 Not Found</title>
 
   <style id="" media="all">
@@ -113,7 +112,7 @@
       color: #262626;
       background-color: transparent;
       border: 1px solid #262626;
-      transition: background-color 0.3s ease;
+      transition: background-color 0.3s ease, transform 0.3s ease; /* Added transform transition */
     }
 
     .return-btn i {
@@ -124,6 +123,16 @@
     .return-btn:hover {
       color: #fff;
       background-color: #444;
+      animation: bounce 0.5s infinite alternate;
+    }
+
+    @keyframes bounce {
+      from {
+        transform: translateY(0);
+      }
+      to {
+        transform: translateY(-5px);
+      }
     }
 
     @media only screen and (max-width: 767px) {
@@ -164,9 +173,9 @@
       </div>
       <h2>We are sorry, but the page you requested was not found</h2>
       <a href="javascript:history.back()" class="return-btn">
-        <i class="fa fa-arrow-left"></i>&nbsp;Return Back
+        <i class="fa fa-arrow-left"></i> Return Back
       </a>
-    
+
     </div>
   </div>
 </body>

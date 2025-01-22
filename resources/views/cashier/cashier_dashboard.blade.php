@@ -17,7 +17,7 @@
                         <i class="fas fa-cash-register fa-3x"></i>
                     </div>
                     <div class="card-footer d-flex align-items-center">
-                       
+
                     </div>
                 </div>
             </div>
@@ -49,23 +49,26 @@
 <!-- Monthly Sales Line Graph -->
 <div class="card mb-4">
     <div class="card-header">
-        <h4>Monthly Sales</h4>
-        <div class="form-inline float-right">
-            <label for="monthFilter" class="mr-2">Filter by Month:</label>
-            <select id="monthFilter" class="form-control">
+        <h4 class="mt-3">Monthly Sales</h4><br>
+        <div class="d-flex align-items-center float-right">
+            <label for="monthFilter" class="mr-2 mb-0">Filter by Month:&nbsp;</label>
+            <select id="monthFilter" class="form-control mr-2" style="width: 39%;">
                 <option value="All">All Months</option>
                 @foreach($months as $index => $month)
                     <option value="{{ $index + 1 }}">{{ $month }}</option>
                 @endforeach
-            </select>
+            </select>&nbsp;&nbsp;
+            <button id="resetButton" class="btn btn-secondary" title="Reset Filter">
+                <i class="fas fa-rotate-left"></i></button>
         </div>
+        <br>
     </div>
     <div class="card-body">
         <div class="chart-container" style="max-width: 100%; overflow: auto; padding: 10px;">
             <canvas id="salesChart" style="width: 100%; height: 600px;"></canvas>
         </div>
     </div>
-</div> 
+</div>
 
 <!-- Include Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -103,8 +106,30 @@
                 },
                 y: {
                     beginAtZero: true,
-                    ticks: { font: { size: 10 } }
+                    ticks: {
+                        font: { size: 10 },
+                        // Include a peso sign in the y-axis ticks
+                        callback: function(value, index, values) {
+                            return '₱' + value.toLocaleString();
+                        }
+                    }
                 }
+            },
+            plugins: { // add this plugins block to add ₱ in tooltip
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    let label = context.dataset.label || '';
+                    if (label) {
+                      label += ': ';
+                    }
+                    if (context.parsed.y !== null) {
+                      label += '₱' + context.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    }
+                    return label;
+                  }
+                }
+              }
             }
         }
     });
@@ -112,7 +137,7 @@
     // Slicer to filter data
     document.getElementById('monthFilter').addEventListener('change', function () {
         const selectedMonth = this.value;
-        
+
         if (selectedMonth === "All") {
             // For "All Months", use the total sales per month
             salesChart.data.labels = months;
@@ -123,6 +148,14 @@
             salesChart.data.datasets[0].data = allSalesData[selectedMonth] || [];
         }
 
+        salesChart.update();
+    });
+
+    // Reset button functionality
+    document.getElementById('resetButton').addEventListener('click', function() {
+        document.getElementById('monthFilter').value = 'All'; // Reset the dropdown
+        salesChart.data.labels = months;
+        salesChart.data.datasets[0].data = monthlySalesTotals; // Reset to monthly totals
         salesChart.update();
     });
 });

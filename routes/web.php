@@ -159,6 +159,12 @@ Route::post('/cashier/pay-late-fees', [CashierController::class, 'payLateFees'])
     Route::get('/services-history', [CashierController::class, 'servicesHistory'])->name('cashier.services_history');
     Route::get('/services-history/getTransactionItems', [CashierController::class, 'getServiceTransactionItems'])->name('cashier.getServiceTransactionItems');
     Route::post('/user/profile/update-password', [CashierController::class, 'changePassword'])->name('cashier.updatePassword');
+
+
+    //Fines Report
+    Route::GET('/cashier/toga_fines_report', [CashierController::class, 'finesReport'])->name('cashier.toga_fines_report');
+    Route::get('/cashier/toga_fines_report/pdf', [CashierController::class, 'exportFinesReportPdf'])->name('cashier.toga_fines_report_pdf');
+    Route::get('/cashier/toga_fines_report/excel', [CashierController::class, 'exportFinesReportExcel'])->name('cashier.toga_fines_report_excel');
     });
 });
 
@@ -201,6 +207,11 @@ Route::prefix('admin')->group(function () {
         Route::GET('/admin_returnreport', [AdminController::class, 'returnReport'])->name('admin.return_item_report');
         Route::get('/admin/returned-item-report/pdf', [AdminController::class, 'exportReturnedItemReportPdf'])->name('admin.returned_item_report_pdf');
         Route::get('/admin/returned-item-report/excel', [AdminController::class, 'exportReturnedItemReportExcel'])->name('admin.returned_item_report_excel');
+
+          //Fines Report
+        Route::GET('/admin/toga_fines_report', [AdminController::class, 'finesReport'])->name('admin.toga_fines_report');
+        Route::get('/admin/toga_fines_report/pdf', [AdminController::class, 'exportFinesReportPdf'])->name('admin.toga_fines_report_pdf');
+        Route::get('/admin/toga_fines_report/excel', [AdminController::class, 'exportFinesReportExcel'])->name('admin.toga_fines_report_excel');
     });
 });
 
@@ -250,6 +261,11 @@ Route::prefix('accounting')->group(function () {
         Route::get('/damage-item-report', [AccountingController::class, 'damageItemReport'])->name('accounting.damage_item_report');
         Route::get('/damage-item-report/pdf', [AccountingController::class, 'exportDamageItemReportPdf'])->name('accounting.damage_item_report.pdf');
         Route::get('/damage-item-report/excel', [AccountingController::class, 'exportDamageItemReportExcel'])->name('accounting.damage_item_report.excel');
+
+        //Fines Report
+        Route::GET('/accounting/toga_fines_report', [AccountingController::class, 'finesReport'])->name('accounting.toga_fines_report');
+        Route::get('/accounting/toga_fines_report/pdf', [AccountingController::class, 'exportFinesReportPdf'])->name('accounting.toga_fines_report_pdf');
+        Route::get('/accounting/toga_fines_report/excel', [AccountingController::class, 'exportFinesReportExcel'])->name('accounting.toga_fines_report_excel');
     });
 });
 

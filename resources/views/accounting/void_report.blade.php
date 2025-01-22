@@ -105,7 +105,7 @@
                         <td>{{ $void->voided_at ? $void->voided_at->format('m-d-Y h:i:s a') : 'N/A' }}</td>
                         <td>{{ $void->item_name ?? 'N/A' }}</td>
                         <td>{{ $void->items->category->category_name ?? 'N/A' }}</td>
-                        <td>{{ number_format($void->price, 2) }}</td>
+                        <td>₱{{ number_format($void->price, 2) }}</td>
                         <td>{{ $void->voided_by }}</td>
                     </tr>
                 @endforeach

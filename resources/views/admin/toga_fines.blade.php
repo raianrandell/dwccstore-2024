@@ -18,6 +18,7 @@
 
 @if (session('success'))
     <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2 fa-lg"></i>
         {{ session('success') }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
@@ -131,7 +132,6 @@
                                     <th>Days Late</th>
                                     <th>Condition</th>
                                     <th>Fee (Days Late)</th>
-                                    <th>Damage/Lost Fee</th>
                                 </tr>
                             </thead>
                             <tbody id="borrowedItems"></tbody>
@@ -139,7 +139,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <strong>Total Fee: PHP <span id="totalFee">0.00</span></strong>
+                    {{-- <strong>Total Fee: PHP <span id="totalFee">0.00</span></strong> --}}
                     <div id="warningMessage" style="display:none; color: red; font-weight: bold;"></div>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Confirm Return</button>
@@ -369,15 +369,10 @@
                     <td>
                         <select class="form-select condition-select" name="conditions[${item.id}]">
                             <option value="Good" selected>Good</option>
-                            <option value="Damaged">Damaged</option>
-                            <option value="Lost">Lost</option>
                         </select>
                     </td>
                     <td class="late-fee-cell">
                         ₱${lateFee.toFixed(2)}
-                    </td>
-                     <td class="damage-lost-fee-cell">
-                        <input type="number" class="form-control damage-lost-fee-input" placeholder="Enter Fee" name="fees[${item.id}]" value="" min="0" ${ 'Good' === 'Good' ? 'disabled' : ''}>
                     </td>
                 </tr>
             `;

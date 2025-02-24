@@ -2,21 +2,19 @@
 
 @section('content')
 <br>
-<h2 class="mt-4 mb-5">Admin Dashboard</h2>
+<h2 class="mt-4 mb-5"></h2>
 
 <div class="row">
     <!-- Total Sales Card -->
     <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-9 text-right">
-                        <div class="card-title">Total Sales</div>
-                        <div class="display-4"><b>₱{{ number_format($grandTotal, 2) }}</b></div>
-                    </div>
-                    <div class="col-3 mt-4 text-center">
-                        <i class="fas fa-dollar-sign fa-3x"></i>
-                    </div>
+        <div class="card text-white shadow-lg border-0 rounded-4 position-relative" style="background: linear-gradient(135deg, #4b6cb7, #182848);">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title fw-bold">Total Sales</h5>
+                    <p class="display-5 fw-bold">₱{{ number_format($grandTotal, 2) }}</p>
+                </div>
+                <div class="icon-container">
+                    <i class="fas fa-dollar-sign fa-4x text-light"></i>
                 </div>
             </div>
         </div>
@@ -24,16 +22,14 @@
 
     <!-- Total Items Card -->
     <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-9 text-right">
-                        <div class="card-title">Total Items</div>
-                        <div class="display-4"><b>&nbsp;{{ $totalItems }}</b></div>
-                    </div>
-                    <div class="col-3 mt-4 text-center">
-                        <i class="fas fa-cubes fa-3x"></i>
-                    </div>
+        <div class="card text-white shadow-lg border-0 rounded-4 position-relative" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title fw-bold">Total Items</h5>
+                    <p class="display-5 fw-bold">{{ $totalItems }}</p>
+                </div>
+                <div class="icon-container">
+                    <i class="fas fa-cubes fa-4x text-light"></i>
                 </div>
             </div>
         </div>
@@ -41,22 +37,29 @@
 
     <!-- Damage Items Card -->
     <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card bg-danger text-white">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-9 text-right">
-                        <div class="card-title">Damage Items</div>
-                        <div class="display-4"><b>&nbsp;{{ $damageItems }}</b></div>
-                    </div>
-                    <div class="col-3 mt-4 text-center">
-                        <i class="fas fa-exclamation-triangle fa-3x"></i>
-                    </div>
+        <div class="card text-white shadow-lg border-0 rounded-4 position-relative" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title fw-bold">Damaged Items</h5>
+                    <p class="display-5 fw-bold">{{ $damageItems }}</p>
+                </div>
+                <div class="icon-container">
+                    <i class="fas fa-exclamation-triangle fa-4x text-light"></i>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<style>
+    .card {
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .icon-container {
+        padding: 15px;
+    }
+</style>
 <!-- Line Chart for Daily Sales -->
 <div class="row mt-5">
     <div class="col-md-12">

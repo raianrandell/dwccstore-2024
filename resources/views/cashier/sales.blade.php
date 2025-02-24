@@ -49,7 +49,7 @@
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <!-- Left Side: Transaction No -->
                             <h4>Transaction No: #TRX{{ time() }}</h4>
-                        
+
                             <!-- Right Side: Date/Time and Services Button -->
                             <div class="d-flex align-items-center">
                                 <h6 class="mb-0 me-3">
@@ -57,7 +57,7 @@
                                 </h6>
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
                             <div class="input-group">
                                 <select class="form-select" id="fetchItem" name="fetchItem" required>
@@ -69,31 +69,34 @@
                                                 $item->expiration_date &&
                                                 \Carbon\Carbon::parse($item->expiration_date)->isPast();
                                         @endphp
-                        
+
                                         @if ($isExpired)
                                             @continue <!-- Skip this iteration if the item is expired -->
                                         @endif
-                        
+
                                         <option value="{{ $item->id }}" {{ $item->qtyInStock === 0 ? 'disabled' : '' }}>
                                             @if ($item->qtyInStock === 0)
                                                 {{ $item->item_name }} - {{ $item->unit_of_measurement }} (Out of Stock)
                                             @else
-                                                {{ $item->item_name }} - {{ $item->unit_of_measurement }} (Stock: {{ $item->qtyInStock }})
+                                                {{ $item->item_name }} - {{ $item->unit_of_measurement }} (Stock:
+                                                {{ $item->qtyInStock }})
                                                 Price: ₱{{ number_format($item->selling_price, 2) }}
                                                 @if ($item->expiration_date)
-                                                    - Exp: {{ \Carbon\Carbon::parse($item->expiration_date)->format('m/d/Y') }}
+                                                    - Exp:
+                                                    {{ \Carbon\Carbon::parse($item->expiration_date)->format('m/d/Y') }}
                                                 @endif
                                             @endif
                                         </option>
                                     @endforeach
                                 </select>
-                        
-                                &nbsp;&nbsp;<button type="button" class="btn btn-outline-success" id="addItemButton" title="Add Item">
+
+                                &nbsp;&nbsp;<button type="button" class="btn btn-outline-success" id="addItemButton"
+                                    title="Add Item">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
                         </div>
-                        
+
                         <!-- Item List Table -->
                         <div class="card mb-4 shadow-sm">
                             <div class="card-header">
@@ -173,8 +176,8 @@
                                 <div class="mb-3">
                                     <label class="form-label">Payment Method</label>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="paymentMethod" id="cashOption"
-                                            value="Cash" checked>
+                                        <input class="form-check-input" type="radio" name="paymentMethod"
+                                            id="cashOption" value="Cash" checked>
                                         <label class="form-check-label" for="cashOption">Cash</label>
                                     </div>
                                     <div class="form-check">
@@ -239,10 +242,23 @@
                                         </div>
                                         <div class="mb-3">
                                             <label for="department" class="form-label">Department</label>
-                                            <input type="text" class="form-control" id="department"
-                                                placeholder="Enter Department">
+                                            <select class="form-control" id="department">
+                                                <option value="" disabled selected>Select Department</option>
+                                                <option value="Accountancy">Accountancy</option>
+                                                <option value="Architecture and Fine Arts">Architecture and Fine Arts
+                                                </option>
+                                                <option value="SBHTM">Business, Hospitality and Tourism Management
+                                                </option>
+                                                <option value="Education">Education</option>
+                                                <option value="Engineering">Engineering</option>
+                                                <option value="Information and Technology">Information and Technology
+                                                </option>
+                                                <option value="Liberal Arts and Criminal Justice">Liberal Arts and Criminal
+                                                    Justice</option>
+                                            </select>
                                         </div>
                                     </div>
+
 
                                     <div id="facultyFields" style="display: none;">
                                         <div class="mb-3">
@@ -252,7 +268,8 @@
                                         </div>
                                         <div class="mb-3">
                                             <label for="facultyContactNumber" class="form-label">Contact Number</label>
-                                            <input type="tel" class="form-control" id="facultyContactNumber" placeholder="Enter Contact Number" maxlength="11" pattern="\d{11}">
+                                            <input type="tel" class="form-control" id="facultyContactNumber"
+                                                placeholder="Enter Contact Number" maxlength="11" pattern="\d{11}">
                                         </div>
                                         <div class="mb-3">
                                             <label for="facultyName" class="form-label">Faculty Name</label>
@@ -630,7 +647,7 @@
                 let discount = parseFloat($('#discountInput').val()) || 0;
                 let discountAmount = (subtotal * discount) / 100;
                 let total = subtotal - discountAmount;
-                 // Calculate total items
+                // Calculate total items
                 let totalItems = transactionItems.reduce((acc, item) => acc + item.quantity, 0);
 
                 $('#subtotal').text(subtotal.toFixed(2));
@@ -889,7 +906,7 @@
                             const transactionNo = response.transaction_no ||
                                 'N/A'; // Default to 'N/A' if undefined
                             const cashierName =
-                                '{{ Auth::guard('cashier')->user()->full_name; }}'; // Assuming this is the correct way to get the cashier's name
+                                '{{ Auth::guard('cashier')->user()->full_name }}'; // Assuming this is the correct way to get the cashier's name
 
                             // Trigger invoice generation and printing
                             generateSalesInvoice({
@@ -904,13 +921,20 @@
                                 change: $('#change').text(),
                                 gcashReference: $('#gcashReference').val(),
                                 chargeType: chargeType,
-                                fullName: $('#fullName').val(),  // Use .val() to get the value
-                                idNumber: $('#idNumber').val(),  // Use .val() to get the value
-                                contactNumber: $('#contactNumber').val(),  // Use .val() to get the value
-                                department: $('#department').val(),  // Use .val() to get the value
-                                facultyName: $('#facultyName').val(),  // Use .val() to get the value
-                                facultyIdNumber: $('#facultyIdNumber').val(),  // Use .val() to get the value
-                                facultyContactNumber: $('#facultyContactNumber').val()  // Use .val() to get the value
+                                fullName: $('#fullName')
+                            .val(), // Use .val() to get the value
+                                idNumber: $('#idNumber')
+                            .val(), // Use .val() to get the value
+                                contactNumber: $('#contactNumber')
+                            .val(), // Use .val() to get the value
+                                department: $('#department')
+                            .val(), // Use .val() to get the value
+                                facultyName: $('#facultyName')
+                            .val(), // Use .val() to get the value
+                                facultyIdNumber: $('#facultyIdNumber')
+                            .val(), // Use .val() to get the value
+                                facultyContactNumber: $('#facultyContactNumber')
+                                .val() // Use .val() to get the value
                             });
 
                             // Reset the transaction to prepare for the next one
@@ -951,127 +975,136 @@
 
                 let totalQuantity = 0;
                 let printContent = `
-        <div style="font-family: Arial, sans-serif; width: 250px; margin: 0 auto; padding: 10px; text-align: left; font-size: 12px;">
-            <p style="text-align: center; margin-bottom: 10px; font-size: 14px;">
+        <div style="font-family: monospace; width: 280px; margin: 0 auto; padding: 5px; text-align: left; font-size: 10px; line-height: 1.2;">
+            <p style="text-align: center; margin-bottom: 5px; font-size: 11px;">
                 <strong>Divine Word College of Calapan</strong><br>
                 Gov. Infantado St. Calapan City Oriental Mindoro<br>
-                TIN 001-000-033-000 &nbsp;&nbsp;&nbsp;&nbsp; NON-VAT<br>
+                TIN 001-000-033-000      NON-VAT<br>
                 Accr No. 036-103286608-000508<br>
                 Permit No. 1013-063-171588-000<br>
                 MIN 130336072
             </p>
-            ====================================
+            --------------------------------------------------
             <p><strong>Transaction No:</strong> ${transactionNo}</p>
             <p><strong>Cashier:</strong> ${cashierName}</p>
             <p><strong>Date/Time:</strong> ${dateTime}</p>
-            ====================================
-            <table style="width: 100%; text-align: left; margin-bottom: 10px; font-size: 12px;">
-                <tr><th style="text-align: left;">Item</th><th style="text-align: right;">Qty</th><th style="text-align: right;">Price</th><th style="text-align: right;">Sub-Total</th></tr>
+            --------------------------------------------------
+            <table style="width: 100%; text-align: left; margin-bottom: 5px; font-size: 10px; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; width: 50%;">Description</th>
+                        <th style="text-align: right; width: 15%;">Qty</th>
+                        <th style="text-align: right; width: 15%;">Price</th>
+                        <th style="text-align: right; width: 20%;">SubTotal</th>
+                    </tr>
+                </thead>
+                <tbody>
     `;
 
                 items.forEach(item => {
                     totalQuantity += item.quantity;
                     printContent += `
             <tr>
-                <td>${item.name}</td>
-                <td style="text-align: right;">${item.quantity}</td>
-                <td style="text-align: right;">₱${item.price.toFixed(2)}</td>
-                <td style="text-align: right;">₱${item.total.toFixed(2)}</td>
+                <td style="padding: 2px 0;">${item.name}</td>
+                <td style="text-align: right; padding: 2px 0;">${item.quantity}</td>
+                <td style="text-align: right; padding: 2px 0;">${item.price.toFixed(2)}</td>
+                <td style="text-align: right; padding: 2px 0;">${item.total.toFixed(2)}</td>
             </tr>
         `;
                 });
 
                 printContent += `
+                </tbody>
             </table>
-            ====================================
+             --------------------------------------------------
             <div style="text-align: left;">
-                <p style="display: flex; justify-content: space-between; margin: 0;">
-                    <span><strong>Total Quantity:</strong></span><span>${totalQuantity}</span>
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <span><strong>Total Qty:</strong></span><span>${totalQuantity}</span>
                 </p>
-                ====================================
-                <p style="display: flex; justify-content: space-between; margin: 0;">
+                 --------------------------------------------------
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
                     <span><strong>Discount:</strong></span><span>₱${parseFloat(discount).toFixed(2)}</span>
                 </p>
-                <p style="display: flex; justify-content: space-between; margin: 0;">
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
                     <span><strong>Total:</strong></span><span>₱${total}</span>
                 </p>
-                <p style="display: flex; justify-content: space-between; margin: 0;">
-                    <span><strong>Payment Method:</strong></span><span>${paymentMethod}</span>
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <span><strong>Payment:</strong></span><span>${paymentMethod}</span>
                 </p>
-               <p style="display: flex; justify-content: space-between; margin: 0;">
+               <p style="display: flex; justify-content: space-between; margin: 2px 0;">
                 <strong>Status:</strong>
                 <span>
                     ${paymentMethod === 'Credit' ? 'Not Paid' : 'Completed'}
                 </span>
             </p>
 
-                ====================================
+                 --------------------------------------------------
     `;
 
                 if (paymentMethod === 'Cash') {
                     printContent += `
-            <p style="display: flex; justify-content: space-between; margin: 0;">
-                <span><strong>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Cash Tendered:</strong></span><span>₱${parseFloat(cashTendered).toFixed(2)}</span>
+            <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                <span><strong>Cash Tendered:</strong></span><span>₱${parseFloat(cashTendered).toFixed(2)}</span>
             </p>
-            <p style="display: flex; justify-content: space-between; margin: 0;">
-                <span><strong>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Change:</strong></span><span>₱-${parseFloat(change).toFixed(2)}</span>
+            <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                <span><strong>Change:</strong></span><span>₱-${parseFloat(change).toFixed(2)}</span>
             </p>
         `;
                 } else if (paymentMethod === 'GCash') { // Add GCash reference condition
                     printContent += `
-            <p style="display: flex; justify-content: space-between; margin: 0;">
-                <strong>GCash Reference:</strong><span>${gcashReference}</span>
+            <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                <strong>GCash Ref:</strong><span>${gcashReference}</span>
             </p>
         `;
                 } else if (paymentMethod === 'Credit') { // Add Credit payment method handling
                     printContent += `
-            <p style="display: flex; justify-content: space-between; margin: 0;">
+            <p style="display: flex; justify-content: space-between; margin: 2px 0;">
                 <strong>Charge to:</strong><span>${chargeType}</span>
             </p>
         `;
 
                     // Display charge details based on Charge Type
-                        if (chargeType === 'Department') {
-                            printContent += `
-                    <p style="display: flex; justify-content: space-between; margin: 0;">
-                        <strong>Full Name:</strong><span>${fullName}</span>
-                    </p>
-                    <p style="display: flex; justify-content: space-between; margin: 0;">
-                        <strong>ID Number:</strong><span>${idNumber}</span>
-                    </p>
-                    <p style="display: flex; justify-content: space-between; margin: 0;">
-                        <strong>Contact Number:</strong><span>${contactNumber}</span>
-                    </p>
-                    <p style="display: flex; justify-content: space-between; margin: 0;">
-                        <strong>Department:</strong><span>${department}</span>
-                    </p>
-                `;
-                        } else if (chargeType === 'Faculty') {
-                            printContent += `
-                    <p style="display: flex; justify-content: space-between; margin: 0;">
-                        <strong>Faculty Name:</strong><span>${facultyName}</span>
-                    </p>
-                    <p style="display: flex; justify-content: space-between; margin: 0;">
-                        <strong>ID Number:</strong><span>${facultyIdNumber}</span>
-                    </p>
-                    <p style="display: flex; justify-content: space-between; margin: 0;">
-                        <strong>Contact Number:</strong><span>${facultyContactNumber}</span>
-                    </p>
-                `;
-                        }
+                    if (chargeType === 'Department') {
+                        printContent += `
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <strong>Full Name:</strong><span>${fullName}</span>
+                </p>
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <strong>ID Number:</strong><span>${idNumber}</span>
+                </p>
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <strong>Contact No:</strong><span>${contactNumber}</span>
+                </p>
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <strong>Department:</strong><span>${department}</span>
+                </p>
+            `;
+                    } else if (chargeType === 'Faculty') {
+                        printContent += `
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <strong>Faculty Name:</strong><span>${facultyName}</span>
+                </p>
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <strong>ID Number:</strong><span>${facultyIdNumber}</span>
+                </p>
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <strong>Contact No:</strong><span>${facultyContactNumber}</span>
+                </p>
+            `;
                     }
+                }
 
                 printContent += `
-            ====================================
-            <p style="text-align: center; font-size: 12px; margin-bottom: 10px;">This is your Sales Invoice</p>
-            <p style="text-align: center; font-size: 12px;">${invoiceNumber}</p>
-            <p style="text-align: center; font-size: 10px;">Thank you for shopping with us!</p>
+             --------------------------------------------------
+            <p style="text-align: center; font-size: 10px; margin-bottom: 5px;">This is your Sales Invoice</p>
+            <p style="text-align: center; font-size: 10px;">${invoiceNumber}</p>
+            <p style="text-align: center; font-size: 9px;">Thank you for shopping with us!</p>
         </div>
     `;
 
                 const screenWidth = window.innerWidth;
                 const screenHeight = window.innerHeight;
-                const windowWidth = 400;
+                const windowWidth = 300;
                 const windowHeight = 600;
                 const left = (screenWidth - windowWidth) / 2;
                 const top = (screenHeight - windowHeight) / 2;
@@ -1082,15 +1115,17 @@
                 printWindow.document.write('<html><head><title>Sales Invoice</title><style>');
                 printWindow.document.write('@media print {');
                 printWindow.document.write(
-                    'body { margin: 0; padding: 0; text-align: center; font-family: Arial, sans-serif; }');
+                    'body { margin: 0; padding: 0; text-align: center; font-family: monospace; }');
                 printWindow.document.write(
-                    'div { width: 300px; margin: 0 auto; padding: 10px; font-size: 12px; border: 1px solid #ccc; text-align: left; }'
-                );
+                    'div { width: 280px; margin: 0 auto; padding: 5px; font-size: 10px; text-align: left; line-height: 1.2; }'
+                    );
                 printWindow.document.write(
-                    'table { width: 100%; text-align: left; font-size: 12px; margin-bottom: 10px; }');
-                printWindow.document.write('th, td { padding: 5px; }');
-                printWindow.document.write('h3 { font-size: 14px; margin-bottom: 10px; }');
-                printWindow.document.write('p { font-size: 12px; }');
+                    'table { width: 100%; text-align: left; font-size: 10px; margin-bottom: 5px; border-collapse: collapse;}'
+                    );
+                printWindow.document.write('th, td { padding: 2px 0; }');
+                printWindow.document.write('h3 { font-size: 12px; margin-bottom: 5px; }');
+                printWindow.document.write('p { font-size: 10px; margin: 2px 0;}');
+                printWindow.document.write('strong { font-weight: bold; }');
                 printWindow.document.write('}');
                 printWindow.document.write('</style></head><body>');
                 printWindow.document.write(printContent);
@@ -1226,7 +1261,7 @@
                         var alert = new bootstrap.Alert(alertElement);
                         alert.close(); // Close the alert
                     }
-                }, 1500);
+                }, 1000);
 
                 // If you want to reload the page after the alert is closed, add an event listener
                 $('#' + alertId).on('closed.bs.alert', function() {
@@ -1244,36 +1279,35 @@
         });
 
         // Function to format and update the date/time
-    function updateDateTime() {
-    const now = new Date();
+        function updateDateTime() {
+            const now = new Date();
 
-    // Format components
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are zero-based
-    const day = String(now.getDate()).padStart(2, '0');
-    const year = now.getFullYear();
+            // Format components
+            const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+            const day = String(now.getDate()).padStart(2, '0');
+            const year = now.getFullYear();
 
-    let hours = now.getHours();
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'pm' : 'am';
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'pm' : 'am';
 
-    // Convert to 12-hour format
-    hours = hours % 12;
-    hours = hours ? String(hours).padStart(2, '0') : '12'; // '0' hour should be '12'
+            // Convert to 12-hour format
+            hours = hours % 12;
+            hours = hours ? String(hours).padStart(2, '0') : '12'; // '0' hour should be '12'
 
-    // Combine into desired format: m-d-Y h:i:s a
-    const formattedDateTime = `${month}-${day}-${year} ${hours}:${minutes}:${seconds} ${ampm}`;
+            // Combine into desired format: m-d-Y h:i:s a
+            const formattedDateTime = `${month}-${day}-${year} ${hours}:${minutes}:${seconds} ${ampm}`;
 
-    // Update the HTML content
-    document.getElementById('currentDateTime').textContent = formattedDateTime;
-}
+            // Update the HTML content
+            document.getElementById('currentDateTime').textContent = formattedDateTime;
+        }
 
-// Initial call to display the time immediately upon page load
-updateDateTime();
+        // Initial call to display the time immediately upon page load
+        updateDateTime();
 
-// Update the time every second (1000 milliseconds)
-setInterval(updateDateTime, 1000);
-
+        // Update the time every second (1000 milliseconds)
+        setInterval(updateDateTime, 1000);
     </script>
 
 @endsection

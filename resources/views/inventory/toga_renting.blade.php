@@ -51,8 +51,8 @@
                         <th>Total Quantity</th>
                         <th>Remaining Stock Available (Good)</th>
                         <th>Quantity Borrowed</th>
-                        <th>Return Damaged Item</th>
-                        <th>Return Lost Item</th>
+                        <th>Number of Return Damaged Item</th>
+                        <th>Number of Lost Item</th>   
                         <th>Action</th>
                     </tr>
                 </thead>

@@ -1,63 +1,48 @@
 @extends ('layout.superadmin')
 
 @section('content')
-
-    <h1 class="mt-4 mb-5">Dashboard</h1>
+<br>
+    <h1 class="mt-4 mb-5"></h1>
     <div class="row">
         <!-- Total Users Card -->
-        <div class="col-xl-4 col-md-6">
-            <div class="card bg-primary text-white mb-4">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-9 text-right">
-                            <div class="card-title">Total Users</div>
-                            <div class="display-4"><b>&nbsp;{{ $totalUsers }}</b></div>
-                        </div>
-                        <div class="col-3 mt-4">
-                            <i class="fas fa-users fa-3x"></i>
-                        </div>
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card text-white shadow-lg border-0 rounded-4 position-relative" style="background: linear-gradient(135deg, #4b6cb7, #182848);">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title fw-bold">Total Users</h5>
+                        <p class="display-5 fw-bold"><b>&nbsp;{{ $totalUsers }}</b></p>
                     </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    
+                    <div class="icon-container">
+                        <i class="fas fa-users fa-3x text-light"></i>
+                    </div>
                 </div>
             </div>
         </div>
         <!-- Active Users Card -->
-        <div class="col-xl-4 col-md-6">
-            <div class="card bg-success text-white mb-4">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-9 text-right">
-                            <div class="card-title">Active Users</div>
-                            <div class="display-4"><b>&nbsp;{{ $activeUsers }}</b></div>
-                        </div>
-                        <div class="col-3 mt-4">
-                            <i class="fas fa-user-check fa-3x"></i>
-                        </div>
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card text-white shadow-lg border-0 rounded-4 position-relative" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title fw-bold">Active Users</h5>
+                        <p class="display-5 fw-bold"><b>&nbsp;{{ $activeUsers }}</b></p>
                     </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    
+                    <div class="icon-container">
+                        <i class="fas fa-user-check fa-3x text-light"></i>
+                    </div>
                 </div>
             </div>
         </div>
         <!-- Inactive Users Card -->
-        <div class="col-xl-4 col-md-6">
-            <div class="card bg-danger text-white mb-4">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-9 text-right">
-                            <div class="card-title">Inactive Users</div>
-                            <div class="display-4"><b>&nbsp;{{ $inactiveUsers }}</b></div>
-                        </div>
-                        <div class="col-3 mt-4">
-                            <i class="fas fa-user-times fa-3x"></i>
-                        </div>
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card text-white shadow-lg border-0 rounded-4 position-relative" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title fw-bold">Inactive Users</h5>
+                        <p class="display-5 fw-bold"><b>&nbsp;{{ $inactiveUsers }}</b></p>
                     </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    
+                    <div class="icon-container">
+                        <i class="fas fa-user-times fa-3x text-light"></i>
+                    </div>
                 </div>
             </div>
         </div>

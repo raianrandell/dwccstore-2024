@@ -3,62 +3,52 @@
 @section('content')
 
 <div class="row mt-5">
-    <h3 class="mb-4">Inventory Dashboard</h3>
+    <h3 class="mb-4"></h3>
     <!-- Total Items Card -->
-    <div class="col-xl-4 col-md-6">
-        <div class="card bg-primary text-white mb-4">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-9 text-right">
-                        <div class="card-title">Total Items</div>
-                        <div class="display-4"><b>&nbsp;{{ $totalItems }}</b></div> <!-- Use dynamic count -->
-                    </div>
-                    <div class="col-3 mt-4">
-                        <i class="fas fa-cubes fa-3x"></i> 
-                    </div>
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card text-white shadow-lg border-0 rounded-4 position-relative" style="background: linear-gradient(135deg, #4b6cb7, #182848);">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title fw-bold">Total Items</h5>
+                    <p class="display-5 fw-bold"><b>&nbsp;{{ $totalItems }}</b></p> <!-- Use dynamic count -->
                 </div>
-            </div>
-            <div class="card-footer d-flex align-items-center justify-content-between">
+                <div class="icon-container">
+                    <i class="fas fa-cubes fa-4x text-light"></i>
+                </div>
             </div>
         </div>
     </div>
     <!-- Total Categories Card -->
-    <div class="col-xl-4 col-md-6">
-        <div class="card bg-success text-white mb-4">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-9 text-right">
-                        <div class="card-title">Total Categories</div>
-                        <div class="display-4"><b>&nbsp;{{ $totalCategories }}</b></div> <!-- Use dynamic count -->
-                    </div>
-                    <div class="col-3 mt-4">
-                        <i class="fas fa-list fa-3x"></i>
-                    </div>
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card text-white shadow-lg border-0 rounded-4 position-relative" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title fw-bold">Total Categories</h5>
+                    <p class="display-5 fw-bold"><b>&nbsp;{{ $totalCategories }}</b></p> <!-- Use dynamic count -->
                 </div>
-            </div>
-            <div class="card-footer d-flex align-items-center justify-content-between">
+                <div class="icon-container">
+                    <i class="fas fa-list fa-4x text-light"></i>
+                </div>
             </div>
         </div>
     </div>
     <!-- Low Stock Items Card -->
-    <div class="col-xl-4 col-md-6">
-        <div class="card bg-danger text-white mb-4">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-9 text-right">
-                        <div class="card-title">Low Stock Items</div>
-                        <div class="display-4"><b>&nbsp;{{ $lowStockItems }}</b></div> <!-- Use dynamic count -->
-                    </div>
-                    <div class="col-3 mt-4">
-                        <i class="fas fa-exclamation-triangle fa-3x"></i>
-                    </div>
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card text-white shadow-lg border-0 rounded-4 position-relative" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title fw-bold">Low Stock Items</h5>
+                    <p class="display-5 fw-bold"><b>&nbsp;{{ $lowStockItems }}</b></p> <!-- Use dynamic count -->
                 </div>
-            </div>
-            <div class="card-footer d-flex align-items-center justify-content-between">
+                <div class="icon-container">
+                    <i class="fas fa-exclamation-triangle fa-4x text-light"></i>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<br><br>
 <!-- Horizontal Bar Chart Comparing Metrics -->
 <div class="row mt-3">
     <div class="col-md-12">

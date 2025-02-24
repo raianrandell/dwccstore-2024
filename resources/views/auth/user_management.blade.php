@@ -1,11 +1,11 @@
 @extends('layout.superadmin')
 
-@section('title', 'Super Admin User Management')
+@section('title', 'User Management')
 
 @section('content')
 
-
-<h1 class="mt-4">User Management</h1>
+<br><br>
+<h1 class="mt-4"></h1>
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{{ route('superadmin.dashboard') }}">Home</a></li>
         <li class="breadcrumb-item active">User Management</li>

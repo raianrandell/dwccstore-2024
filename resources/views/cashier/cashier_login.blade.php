@@ -53,6 +53,6 @@
             </form>
         </div>
     </div>
-    <script type="text/javascript" src="{{asset ('javascripts/toggle_password.js')}}"></script>  
+    <script type="text/javascript" src="{{asset ('javascripts/toggle_password.js')}}"></script>
 </body>
 </html>

@@ -73,7 +73,6 @@
                 data-bs-target="#collapseReports" 
                 aria-expanded="{{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') || request()->routeIs('cashier.toga_fines_report') ? 'true' : 'false' }}" 
                 aria-controls="collapseReports">
-                <div class="sb-nav-link-icon text-white"><i class="fa-regular fa-file"></i></div>
                 Reports
                 <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down text-white"></i></div>
             </a>

@@ -19,6 +19,7 @@
 
 @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2 fa-lg"></i>
         {{ session('success') }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
@@ -286,7 +287,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <input type="hidden" name="payment_method" id="late_selected_payment_method" value="">
                     <input type="hidden" name="change_amount" id="late_change_amount_input" value="0.00">
                     <button type="submit" class="btn btn-success">Pay</button>
@@ -382,6 +383,16 @@
 
 
     document.addEventListener('DOMContentLoaded', function() {
+
+        document.getElementById('returnForm').addEventListener('submit', function(event) {
+            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+            if (checkedItems.length === 0) {
+                event.preventDefault(); // Prevent form submission
+                alert('Please select at least one item to return.'); // Display an alert message
+                return; // Optionally return false to stop further execution
+            }
+            // If checkboxes are checked, the form will submit normally
+        });
         // Show issueModal if session('error_modal') exists
         @if(session('error_modal'))
             var issueModal = new bootstrap.Modal(document.getElementById('issueModal'));
@@ -405,8 +416,8 @@
             }, 2000); // Wait for 2 seconds
         }
 
-        // Handle Return Modal
-        var returnModalElement = document.getElementById('returnModal');
+               // Handle Return Modal
+               var returnModalElement = document.getElementById('returnModal');
         returnModalElement.addEventListener('show.bs.modal', function (event) {
             var button = event.relatedTarget;
             var borrower = JSON.parse(button.getAttribute('data-borrower'));
@@ -449,7 +460,7 @@
                 }
 
                 var lateFee = daysLate * 10;
-                totalFee += lateFee;
+                totalFee += lateFee; // Initialize totalFee with lateFee for good condition items
 
                 borrowedItemsContainer.innerHTML += `
                     <tr>
@@ -470,7 +481,7 @@
                         <td>
                             <input type="number" class="form-control fee-input" name="fees[${item.id}]" data-item-id="${item.id}" placeholder="Enter Fee" style="display:none" min="0" step="0.01">
                         </td>
-                        <td class="late-fee" data-item-id="${item.id}">₱${lateFee.toFixed(2)}</td> 
+                        <td class="late-fee" data-item-id="${item.id}">₱${lateFee.toFixed(2)}</td>
                     </tr>
                 `;
             });
@@ -483,17 +494,14 @@
                 select.addEventListener('change', function() {
                     var itemId = this.getAttribute('data-item-id');
                     var feeInput = document.querySelector(`.fee-input[data-item-id="${itemId}"]`);
-                    var lateFeeCell = document.querySelector(`.late-fee[data-item-id="${itemId}"]`);
 
                     if (this.value === 'Good') {
                         feeInput.style.display = 'none';
                         feeInput.value = ''; // Clear any entered value
                         feeInput.removeAttribute('required');
-                        lateFeeCell.style.display = 'table-cell';
                     } else {
                         feeInput.style.display = 'block';
                         feeInput.setAttribute('required', 'required');
-                        lateFeeCell.style.display = 'none';
                         feeInput.focus();
                     }
                     updateTotalFee();
@@ -513,11 +521,14 @@
                         var row = checkbox.closest('tr');
                         var lateFeeCell = row.querySelector('.late-fee');
                         var feeInput = row.querySelector('.fee-input');
+                        var conditionSelect = row.querySelector('.condition-select');
+                        var lateFeeAmount = parseFloat(lateFeeCell.textContent.replace('₱', '')) || 0;
+                        var additionalFeeAmount = parseFloat(feeInput.value) || 0;
 
-                        if (feeInput && feeInput.style.display !== 'none' && feeInput.value) {
-                            newTotalFee += parseFloat(feeInput.value) || 0;
-                        } else if (lateFeeCell && lateFeeCell.style.display !== 'none') {
-                            newTotalFee += parseFloat(lateFeeCell.textContent.replace('₱', '')) || 0;
+                        if (conditionSelect.value === 'Good') {
+                            newTotalFee += lateFeeAmount; // Only late fee for good condition
+                        } else {
+                            newTotalFee += lateFeeAmount + additionalFeeAmount; // Late fee + additional fee for damaged/lost
                         }
                     }
                 });

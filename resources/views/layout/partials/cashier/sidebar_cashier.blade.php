@@ -73,9 +73,10 @@
                 data-bs-target="#collapseReports" 
                 aria-expanded="{{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') || request()->routeIs('cashier.toga_fines_report') ? 'true' : 'false' }}" 
                 aria-controls="collapseReports">
-                Reports
+                <i class="fas fa-chart-bar me-2"></i> Reports
                 <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down text-white"></i></div>
             </a>
+
             <div class="collapse {{ request()->routeIs('cashier.sales_report') || request()->routeIs('cashier.void_report') || request()->routeIs('cashier.return_item_report') || request()->routeIs('cashier.toga_fines_report') ? 'show' : '' }}" id="collapseReports" aria-labelledby="headingReports" data-bs-parent="#sidenavAccordion">
                 <nav class="sb-sidenav-menu-nested">
                     <a class="nav-link text-white {{ request()->routeIs('cashier.sales_report') ? 'active' : '' }}" href="{{ route('cashier.sales_report') }}">

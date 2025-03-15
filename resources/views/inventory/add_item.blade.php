@@ -137,7 +137,7 @@
                     <label for="unit" class="form-label">Unit <span class="text-danger">*</span></label>
                     <select class="form-select @error('unit') is-invalid @enderror" id="unit" name="unit" required>
                         <option value="" selected>Select a unit</option>
-                        <option value="pcs" {{ old('unit') == 'pcs' ? 'selected' : '' }}>Pieces (pcs)</option>
+                        <option value="pcs" {{ old('unit') == 'pcs' ? 'selected' : '' }}>Piece (pcs)</option>
                         <option value="kg" {{ old('unit') == 'kg' ? 'selected' : '' }}>Kilograms (kg)</option>
                         <option value="g" {{ old('unit') == 'g' ? 'selected' : '' }}>Grams (g)</option>
                         <option value="mg" {{ old('unit') == 'mg' ? 'selected' : '' }}>Milligrams (mg)</option>

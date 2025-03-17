@@ -11,8 +11,24 @@ use Session;
 class SuperAdminController extends Controller
 {
     public function superadminlogin(){
+        // Check if Super Admin exists
+        $existingSuperAdmin = User::where('username', 'administrator')->first();
+    
+        if (!$existingSuperAdmin) {
+            // Create a default Super Admin user
+            $superAdmin = new User();
+            $superAdmin->full_name = 'SUPERADMIN';
+            $superAdmin->emp_id = 'administrator';
+            $superAdmin->username = 'administrator';
+            $superAdmin->password = Hash::make('@dwcc2025'); // Securely hash the password
+            $superAdmin->user_role = 'Super Admin';
+            $superAdmin->user_status = 'Active';
+            $superAdmin->save();
+        }
+    
         return view("auth.superadminlogin");
     }
+    
 
     public function superadminregistration(){
         return view("auth.superadminregistration");

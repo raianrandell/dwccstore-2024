@@ -14,7 +14,7 @@
 <!-- Success and Error Messages -->
 @if(Session::has('success'))
     <div class="alert alert-success alert-dismissible fade show d-flex align-items-center" role="alert">
-        <i class="fas fa-checck-circle me-2 fa-lg"></i>
+        <i class="fas fa-check-circle me-2 fa-lg"></i>
         <div>
             {{ Session::get('success') }}
         </div>

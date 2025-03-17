@@ -39,7 +39,6 @@ class CreateServicesItemsTable extends Migration
             // Optional fields based on fee structure
             $table->integer('number_of_copies')->nullable();
             $table->decimal('number_of_hours', 5, 2)->nullable();
-            $table->decimal('amount', 10, 2)->nullable();
 
             // Total amount for this service item
             $table->decimal('total', 10, 2);

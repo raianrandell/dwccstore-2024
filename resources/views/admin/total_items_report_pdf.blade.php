@@ -193,7 +193,7 @@
         <div class="col-md-6 signature-column">
             <p>Approved by:</p>
             <div class="signature-line"></div>
-            <p class="signature-name">FR. JEROME A. ORMITA, SVD</p>
+            <p class="signature-name">FR. JEROME A. ORMITA, <span style="font-weight: normal; font-style: italic;">SVD</span></p>
             <p class="signature-title">VP for Finance</p>
         </div>
     </div>

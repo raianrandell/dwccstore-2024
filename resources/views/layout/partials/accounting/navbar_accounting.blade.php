@@ -1,6 +1,6 @@
 <nav class="sb-topnav navbar navbar-expand navbar-dark bg-success">
     <!-- Navbar Brand-->
-    <a class="navbar-brand ps-3 d-flex align-items-center" href="{{ route('accounting.dashboard') }}">
+    <a class="navbar-brand ps-3 d-flex align-items-center" href="{{ route('accounting.chargeTransaction') }}">
         <img src="{{ asset('images/dwcclogo.png') }}" alt="Logo" style="height: 30px; margin-right: 10px;">
         DWCC STORE
     </a>

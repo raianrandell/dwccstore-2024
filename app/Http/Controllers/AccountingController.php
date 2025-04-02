@@ -139,67 +139,85 @@ class AccountingController extends Controller
         
             return view('accounting.charge_transaction', compact('transactions','users'));
         } 
-        public function getTransactionDetails($transactionId)
-    {
-        // Find the transaction along with its related items and service items
-        $transaction = Transaction::with(['items', 'serviceItems.service'])->find($transactionId);
-
-        if (!$transaction) {
-            return response()->json(['success' => false, 'message' => 'Transaction not found.'], 404);
-        }
-
-        $items = $transaction->items;
-        $serviceItems = $transaction->serviceItems;
-        $totalAmount = $items->sum('total') + $serviceItems->sum('total'); // Adjust total calculation
-
-        // Prepare the response data
-        $transactionDetails = [
-            'success' => true,
-            'chargeType' => $transaction->charge_type,
-            'department' => $transaction->department,
-            'full_name' => $transaction->full_name,
-            'faculty_name' => $transaction->faculty_name,
-            'id_number' => $transaction->id_number,
-            'contact_number' => $transaction->contact_number,
-            'items' => $items,
-            'serviceItems' => $serviceItems->map(function($serviceItem) {
-                return [
-                    'service_type' => $serviceItem->service_type,
-                    'number_of_copies' => $serviceItem->number_of_copies ?? 0, // Ensure default value
-                    'number_of_hours' => $serviceItem->number_of_hours ?? 0,   // Ensure default value
-                    'price' => $serviceItem->price,
-                    'total' => $serviceItem->total,
-                    'service' => $serviceItem->service
+        public function getTransactionDetails($id)
+        {
+            try {
+                // Find the transaction by ID
+                $transaction = Transaction::with(['items', 'serviceItems.service'])->find($id); // Eager load relations
+    
+                if (!$transaction) {
+                    return response()->json(['success' => false, 'message' => 'Transaction not found'], 404); // Return 404 if not found
+                }
+    
+                // Prepare the data to be returned.  This avoids exposing the entire model.
+                $data = [
+                    'success' => true,
+                    'transaction_no' => $transaction->transaction_no,
+                    'payment_method' => $transaction->payment_method,
+                    'charge_type' => $transaction->charge_type,
+                    'status' => $transaction->status,
+                    'totalAmount' => $transaction->total,
+                    'created_at' => $transaction->created_at,
+                    'full_name' => $transaction->full_name,
+                    'id_number' => $transaction->id_number,
+                    'contact_number' => $transaction->contact_number,
+                    'department' => $transaction->department,
+                    'faculty_name' => $transaction->faculty_name,
+                    'items' => $transaction->items->map(function ($item) { // Format items
+                        return [
+                            'item_name' => $item->item_name,
+                            'quantity' => $item->quantity,
+                            'price' => $item->price,
+                            'total' => $item->total,
+                        ];
+                    }),
+                    'serviceItems' => $transaction->serviceItems->map(function ($serviceItem) {
+                        return [
+                            'service' => [
+                                'service_name' => $serviceItem->service->service_name,
+                            ],
+                            'service_type' => $serviceItem->service_type,
+                            'number_of_copies' => $serviceItem->number_of_copies,
+                            'number_of_hours' => $serviceItem->number_of_hours,
+                            'price' => $serviceItem->price,
+                            'total' => $serviceItem->total,
+                        ];
+                    }),
                 ];
-            }),
-            'totalAmount' => $totalAmount // Send as number, format on frontend
-        ];
-
-        return response()->json($transactionDetails);
-    }
-        
-        
-
+    
+                return response()->json($data);
+    
+            } catch (\Exception $e) {
+                // Log the error for debugging
+                \Log::error('Error getting transaction details: ' . $e->getMessage());
+    
+                return response()->json(['success' => false, 'message' => 'Error getting transaction details: ' . $e->getMessage()], 500);  // Return 500 on error
+            }
+        }
+    
+    
         public function updateTransactionStatus(Request $request, $id)
         {
-            $transaction = Transaction::find($id);
-        
-            if (!$transaction) {
-                return response()->json(['success' => false, 'message' => 'Transaction not found.']);
-            }
-        
-            $cashPayment = $request->input('cashPayment');
-        
-            if ($cashPayment < $transaction->total) {
-                return response()->json(['success' => false, 'message' => 'Payment amount is less than the total.']);
-            }
-        
-            $transaction->status = 'Paid'; // Mark as Paid
-            $transaction->cash_tendered = $cashPayment;
-            $transaction->change = $cashPayment - $transaction->total;
-            $transaction->save();
-        
-            return response()->json(['success' => true, 'message' => 'Transaction updated successfully.']);
+             try {
+                $transaction = Transaction::find($id);
+    
+                if (!$transaction) {
+                    return response()->json(['success' => false, 'message' => 'Transaction not found'], 404);
+                }
+    
+                $cashPayment = $request->input('cashPayment');
+    
+                 // Update the transaction status
+                 $transaction->status = 'Paid';
+                 $transaction->cash_tendered = $cashPayment;
+                 $transaction->save();
+    
+                 return response()->json(['success' => true, 'message' => 'Transaction status updated successfully']);
+    
+             } catch (\Exception $e) {
+                 \Log::error('Error updating transaction status: ' . $e->getMessage());
+                 return response()->json(['success' => false, 'message' => 'Error updating transaction status'], 500);
+             }
         }
         
 

@@ -118,7 +118,9 @@ Route::prefix('cashier')->group(function () {
     Route::POST('/transactions/save', [CashierController::class, 'saveTransaction'])->name('cashier.save_transaction');
     Route::POST('/cashier/save_items_session', [CashierController::class, 'saveItemsSession'])->name('cashier.save_items_session');
     Route::GET('/cashier/fetch-item-by-barcode', [CashierController::class, 'fetchItemByBarcode'])->name('cashier.fetch_item_by_barcode');
-    
+    // Example - Adjust controller and method name as needed
+    Route::get('/cashier/credit-transaction/{id}/details', [CashierController::class, 'getCreditTransactionDetails'])
+    ->name('cashier.getCreditTransactionDetails');
     Route::GET('/cashier_voidrecords', [CashierController::class, 'voidRecords'])->name('cashier.void_records');
     Route::post('/cashier/save_void_records', [CashierController::class, 'saveVoidRecords'])->name('cashier.save_void_records');
 

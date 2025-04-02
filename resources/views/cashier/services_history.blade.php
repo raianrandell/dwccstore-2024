@@ -140,117 +140,123 @@
                 facultyName,
                 facultyIdNumber,
                 facultyContactNumber,
-                status // Ensure status is destructured
+                status // Ensure status is destructured, but will be replaced with logic
             } = data;
 
             // Adjust the invoice content based on charge type
             let chargeInfo = '';
             if (chargeType === 'Department') {
                 chargeInfo = `
-                    <p style="display: flex; justify-content: space-between; margin: 0;"><strong>ID Number:</strong> ${idNumber}</p>
-                    <p style="display: flex; justify-content: space-between; margin: 0;"><strong>Contact Number:</strong> ${contactNumber}</p>
-                    <p style="display: flex; justify-content: space-between; margin: 0;"><strong>Department:</strong> ${department}</p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;"><strong>Full Name:</strong><span>${fullName}</span></p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;"><strong>ID Number:</strong><span>${idNumber}</span></p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;"><strong>Contact No:</strong><span>${contactNumber}</span></p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;"><strong>Department:</strong><span>${department}</span></p>
                 `;
-            } else if (chargeType === 'Faculty') {
+            } else if (chargeType === 'Employee') {
                 chargeInfo = `
-                    <p style="display: flex; justify-content: space-between; margin: 0;"><strong>Faculty Name:</strong> ${facultyName}</p>
-                    <p style="display: flex; justify-content: space-between; margin: 0;"><strong>ID Number:</strong> ${facultyIdNumber}</p>
-                    <p style="display: flex; justify-content: space-between; margin: 0;"><strong>Contact Number:</strong> ${facultyContactNumber}</p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;"><strong>Employee Name:</strong><span>${facultyName}</span></p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;"><strong>ID Number:</strong><span>${facultyIdNumber}</span></p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;"><strong>Contact No:</strong><span>${facultyContactNumber}</span></p>
                 `;
             }
 
             let printContent = `
-                <div style="font-family: Arial, sans-serif; width: 250px; margin: 0 auto; padding: 10px; text-align: left; font-size: 12px;">
-                    <p style="text-align: center; margin-bottom: 10px; font-size: 14px;">
+                <div style="font-family: monospace; width: 280px; margin: 0 auto; padding: 5px; text-align: left; font-size: 10px; line-height: 1.2;">
+                    <p style="text-align: center; margin-bottom: 5px; font-size: 11px;">
                         <strong>Divine Word College of Calapan</strong><br>
                         Gov. Infantado St. Calapan City Oriental Mindoro<br>
-                        TIN 001-000-033-000 &nbsp;&nbsp;&nbsp;&nbsp; NON-VAT<br>
+                        TIN 001-000-033-000      NON-VAT<br>
                         Accr No. 036-103286608-000508<br>
                         Permit No. 1013-063-171588-000<br>
                         MIN 130336072
                     </p>
-                    ====================================
-                    <p><strong>Transaction No:</strong> ${transactionNo}</p>
+                    --------------------------------------------------
+                    <p><strong>Txn No:</strong> ${transactionNo}</p>
                     <p><strong>Cashier:</strong> ${cashierName}</p>
                     <p><strong>Date/Time:</strong> ${dateTime}</p>
-                    ====================================
+                    --------------------------------------------------
 
-                    <table style="width: 100%; text-align: left; margin-bottom: 10px; font-size: 12px;">
-                        <tr>
-                            <th style="text-align: left;">Description</th>
-                            <th style="text-align: center;">Copies</th>
-                            <th style="text-align: center;">Hours</th>
-                            <th style="text-align: right;">Price</th>
-                            <th style="text-align: right;">Sub-Total</th>
-                        </tr>
+                    <table style="width: 100%; text-align: left; margin-bottom: 5px; font-size: 10px; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; width: 40%;">Description</th>
+                                <th style="text-align: center; width: 10%;">Copies</th>
+                                <th style="text-align: center; width: 10%;">Hours</th>
+                                <th style="text-align: right; width: 20%;">Price</th>
+                                <th style="text-align: right; width: 20%;">SubTotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
 
             services.forEach((service, index) => {
                 const copies = service.number_of_copies !== null && service.number_of_copies > 0 ?
-                    service.number_of_copies : '-';
+                    service.number_of_copies : ''; // changed '-' to '' to match first function
                 // **Remove decimals from hours by parsing as integer**
-                const hours = service.number_of_hours !== null && service.number_of_hours > 0 ? 
-                    parseInt(service.number_of_hours) : '-';
+                const hours = service.number_of_hours !== null && service.number_of_hours > 0 ?
+                    parseInt(service.number_of_hours) : ''; // changed '-' to '' to match first function
                 printContent += `
                     <tr>
-                        <td>${service.name}</td>
-                        <td style="text-align: center;">${copies}</td>
-                        <td style="text-align: center;">${hours}</td>
-                        <td style="text-align: right;">₱${service.price.toFixed(2)}</td>
-                        <td style="text-align: right;">₱${service.total.toFixed(2)}</td>
+                        <td style="padding: 2px 0;">${service.name}</td>
+                        <td style="text-align: center; padding: 2px 0;">${copies}</td>
+                        <td style="text-align: center; padding: 2px 0;">${hours}</td>
+                        <td style="text-align: right; padding: 2px 0;">₱${service.price.toFixed(2)}</td>
+                        <td style="text-align: right; padding: 2px 0;">₱${service.total.toFixed(2)}</td>
                     </tr>
                 `;
             });
 
             printContent += `
+                        </tbody>
                     </table>
-                    ====================================
+                    --------------------------------------------------
                     <div style="text-align: left;">
-                        <p style="display: flex; justify-content: space-between; margin: 0;">
+                        <p style="display: flex; justify-content: space-between; margin: 2px 0;">
                             <span><strong>Discount:</strong></span><span>₱${parseFloat(discount).toFixed(2)}</span>
                         </p>
-                        <p style="display: flex; justify-content: space-between; margin: 0;">
+                        <p style="display: flex; justify-content: space-between; margin: 2px 0;">
                             <span><strong>Total:</strong></span><span>₱${total}</span>
                         </p>
-                        <p style="display: flex; justify-content: space-between; margin: 0;">
-                            <span><strong>Payment Method:</strong></span><span>${paymentMethod}</span>
+                        <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                            <span><strong>Payment:</strong></span><span>${paymentMethod}</span>
                         </p>
-                        <p style="display: flex; justify-content: space-between; margin: 0;">
-                            <strong>Status:</strong> <span>${status}</span>
-      
+                        <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                            <strong>Status:</strong>
+                            <span>${paymentMethod === 'Credit' ? 'Not Paid' : 'Completed'}</span>
+
                         </p>
-                        ====================================
+                        --------------------------------------------------
             `;
 
             if (paymentMethod === 'Cash') {
                 printContent += `
-                        <p style="display: flex; justify-content: space-between; margin: 0;">
+                        <p style="display: flex; justify-content: space-between; margin: 2px 0;">
                             <span><strong>Cash Tendered:</strong></span><span>₱${parseFloat(cashTendered).toFixed(2)}</span>
                         </p>
-                        <p style="display: flex; justify-content: space-between; margin: 0;">
+                        <p style="display: flex; justify-content: space-between; margin: 2px 0;">
                             <span><strong>Change:</strong></span><span>₱-${parseFloat(change).toFixed(2)}</span>
                         </p>
                 `;
             } else if (paymentMethod === 'GCash') {
                 printContent += `
-                        <p style="display: flex; justify-content: space-between; margin: 0;">
-                            <strong>GCash Reference:</strong><span>${gcashReference}</span>
+                        <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                            <strong>GCash Ref:</strong><span>${gcashReference}</span>
                         </p>
                 `;
             } else if (paymentMethod === 'Credit') {
                 printContent += `
-                        <p style="display: flex; justify-content: space-between; margin: 0;">
-                            ${chargeInfo}
-                            <p style="display: flex; justify-content: space-between; margin: 0;"><strong>Charge to:</strong><span> ${chargeType}</span>
+                        <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                            <strong>Charge to:</strong><span> ${chargeType}</span>
                         </p>
+                        ${chargeInfo}
                 `;
             }
 
             printContent += `
-                    ====================================
-                    <p style="text-align: center; font-size: 12px; margin-bottom: 10px;">This is your Sales Invoice</p>
-                    <p style="text-align: center; font-size: 12px;">${invoiceNumber}</p>
-                    <p style="text-align: center; font-size: 10px;">Thank you for choosing our services!</p>
+                    --------------------------------------------------
+                    <p style="text-align: center; font-size: 10px; margin-bottom: 5px;">This is your Sales Invoice</p>
+                    <p style="text-align: center; font-size: 10px;">${invoiceNumber}</p>
+                    <p style="text-align: center; font-size: 9px;">Thank you for choosing our services!</p>
                 </div>
                 <br><br>
             `;
@@ -258,7 +264,7 @@
             // Open print window and center it
             const screenWidth = window.innerWidth;
             const screenHeight = window.innerHeight;
-            const windowWidth = 400; // Width of the print window
+            const windowWidth = 300; // Width of the print window, adjusted to match first function
             const windowHeight = 600; // Height of the print window
             const left = (screenWidth - windowWidth) / 2; // Center horizontally
             const top = (screenHeight - windowHeight) / 2; // Center vertically
@@ -270,15 +276,16 @@
             printWindow.document.write('<html><head><title>Sales Invoice</title><style>');
             printWindow.document.write('@media print {');
             printWindow.document.write(
-                'body { margin: 0; padding: 0; text-align: center; font-family: Arial, sans-serif; }');
+                'body { margin: 0; padding: 0; text-align: center; font-family: monospace; }'); // changed to monospace
             printWindow.document.write(
-                'div { width: 300px; margin: 0 auto; padding: 10px; font-size: 12px; border: 1px solid #ccc; text-align: left; }'
+                'div { width: 280px; margin: 0 auto; padding: 5px; font-size: 10px; text-align: left; line-height: 1.2; }' // adjusted to match first function
             );
             printWindow.document.write(
-                'table { width: 100%; text-align: left; font-size: 12px; margin-bottom: 10px; }');
-            printWindow.document.write('th, td { padding: 5px; }');
-            printWindow.document.write('h3 { font-size: 14px; margin-bottom: 10px; }');
-            printWindow.document.write('p { font-size: 12px; }');
+                'table { width: 100%; text-align: left; font-size: 10px; margin-bottom: 5px; border-collapse: collapse;}'); // adjusted to match first function
+            printWindow.document.write('th, td { padding: 2px 0; }'); // adjusted to match first function
+            printWindow.document.write('h3 { font-size: 12px; margin-bottom: 5px; }');
+            printWindow.document.write('p { font-size: 10px; margin: 2px 0;}'); // adjusted to match first function
+            printWindow.document.write('strong { font-weight: bold; }'); // added strong style to match first function
             printWindow.document.write('}');
             printWindow.document.write('</style></head><body>');
             printWindow.document.write(printContent);
@@ -287,7 +294,6 @@
             printWindow.document.close();
             printWindow.print();
         }
-
         // Handle View Button Click for Services History
         $(document).on('click', '.view_service_btn', function() {
             var transactionNo = $(this).data('transaction-no');
@@ -360,9 +366,9 @@
                             idNumber: chargeType === 'Department' ? chargeDetails.id_number : '',
                             contactNumber: chargeType === 'Department' ? chargeDetails.contact_number : '',
                             department: chargeType === 'Department' ? chargeDetails.department : '',
-                            facultyName: chargeType === 'Faculty' ? chargeDetails.faculty_name : '',
-                            facultyIdNumber: chargeType === 'Faculty' ? chargeDetails.id_number : '',
-                            facultyContactNumber: chargeType === 'Faculty' ? chargeDetails.contact_number : ''
+                            facultyName: chargeType === 'Employee' ? chargeDetails.faculty_name : '',
+                            facultyIdNumber: chargeType === 'Employee' ? chargeDetails.id_number : '',
+                            facultyContactNumber: chargeType === 'Employee' ? chargeDetails.contact_number : ''
                         };
 
                         // Append transaction items to the table

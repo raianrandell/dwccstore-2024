@@ -225,111 +225,149 @@ $('#printBtn').on('click', function () {
     var chargeType = $(this).data('charge_type'); // Get the charge type for Credit payment
     var chargeDetails = $(this).data('charge_details');
     var status = $(this).data('status');
-    
+    var transactionNo = $('#transactionNo').text();
+    var cashierName = $('#cashierName').text();
+    var dateTime = $('#transactionDateTime').text();
 
-    
 
     // Create a receipt-style print content
-    var printContent = '<div style="font-family: Arial, sans-serif; width: 250px; margin: 0 auto; padding: 10px; text-align: left; font-size: 12px;">';
-
-    // Add header information
-    printContent += '<p style="text-align: center; margin-bottom: 10px; font-size: 14px;">';
-    printContent += '<strong>Divine Word College of Calapan</strong><br>';
-    printContent += 'Gov. Infantado St. Calapan City Oriental Mindoro<br>';
-    printContent += 'TIN 001-000-033-000 &nbsp;&nbsp;&nbsp;&nbsp; NON-VAT<br>';
-    printContent += 'Accr No. 036-103286608-000508<br>';
-    printContent += 'Permit No. 1013-063-171588-000<br>';
-    printContent += 'MIN 130336072</p>';
-    printContent += '====================================';
-
-    // Add transaction details
-    printContent += '<p><strong>Transaction No:</strong> ' + $('#transactionNo').text() + '</p>';
-    printContent += '<p><strong>Cashier:</strong> ' + $('#cashierName').text() + '</p>';
-    printContent += '<p><strong>Date/Time:</strong> ' + $('#transactionDateTime').text() + '</p>';
-    printContent += '====================================';
-
-    // Items purchased
-    printContent += '<table style="width: 100%; text-align: left; margin-bottom: 10px; font-size: 12px;">';
-    printContent += '<tr><th style="text-align: left;">Item</th><th style="text-align: right;">Qty</th><th style="text-align: right;">Price</th><th style="text-align: right;">Sub-Total</th></tr>';
+      var printContent = `
+        <div style="font-family: monospace; width: 280px; margin: 0 auto; padding: 5px; text-align: left; font-size: 10px; line-height: 1.2;">
+            <p style="text-align: center; margin-bottom: 5px; font-size: 11px;">
+                <strong>Divine Word College of Calapan</strong><br>
+                Gov. Infantado St. Calapan City Oriental Mindoro<br>
+                TIN 001-000-033-000      NON-VAT<br>
+                Accr No. 036-103286608-000508<br>
+                Permit No. 1013-063-171588-000<br>
+                MIN 130336072
+            </p>
+            --------------------------------------------------
+            <p><strong>Transaction No:</strong> ${transactionNo}</p>
+            <p><strong>Cashier:</strong> ${cashierName}</p>
+            <p><strong>Date/Time:</strong> ${dateTime}</p>
+            --------------------------------------------------
+            <table style="width: 100%; text-align: left; margin-bottom: 5px; font-size: 10px; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; width: 50%;">Description</th>
+                        <th style="text-align: right; width: 15%;">Qty</th>
+                        <th style="text-align: right; width: 15%;">Price</th>
+                        <th style="text-align: right; width: 20%;">SubTotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
 
     $('#transactionItemsTable tbody tr').each(function () {
         var itemName = $(this).find('td:nth-child(2)').text();
         var quantity = parseInt($(this).find('td:nth-child(3)').text()); // Get the quantity as integer
-        var price = $(this).find('td:nth-child(4)').text();
-        var subTotal = $(this).find('td:nth-child(5)').text();
+        var price = parseFloat($(this).find('td:nth-child(4)').text().replace('₱', '')).toFixed(2); // Parse price
+        var subTotal = parseFloat($(this).find('td:nth-child(5)').text().replace('₱', '')).toFixed(2); //Parse Subtotal
 
         // Add quantity to the total quantity
         totalQuantity += quantity;
 
-        printContent += '<tr>';
-        printContent += '<td>' + itemName + '</td>';
-        printContent += '<td style="text-align: right;">' + quantity + '</td>';
-        printContent += '<td style="text-align: right;">' + price + '</td>';
-        printContent += '<td style="text-align: right;">' + subTotal + '</td>';
-        printContent += '</tr>';
+          printContent += `
+            <tr>
+                <td style="padding: 2px 0;">${itemName}</td>
+                <td style="text-align: right; padding: 2px 0;">${quantity}</td>
+                <td style="text-align: right; padding: 2px 0;">${price}</td>
+                <td style="text-align: right; padding: 2px 0;">${subTotal}</td>
+            </tr>
+        `;
     });
 
-    printContent += '</table>';
-    printContent += '====================================';
+       printContent += `
+                </tbody>
+            </table>
+             --------------------------------------------------
+            <div style="text-align: left;">
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <span><strong>Total Qty:</strong></span><span>${totalQuantity}</span>
+                </p>
+                 --------------------------------------------------
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <span><strong>Discount:</strong></span><span>₱${parseFloat(discount).toFixed(2)}</span>
+                </p>
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <span><strong>Total:</strong></span><span>₱${total}</span>
+                </p>
+                <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                    <span><strong>Payment:</strong></span><span>${paymentMethod}</span>
+                </p>
+               <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                <strong>Status:</strong>
+                <span>
+                    ${paymentMethod === 'Credit' ? 'Not Paid' : 'Completed'}
+                </span>
+            </p>
 
-    // Summary section (aligned to the right)
-    printContent += '<div style="text-align: left;">';  // Align the content to the left
-    printContent += '<p style="display: flex; justify-content: space-between; margin: 0;">';
-    printContent += '<span><strong>Total Quantity:</strong></span><span>' + totalQuantity + '</span>';
-    printContent += '</p>';
-    printContent += '====================================';
-    printContent += '<p style="display: flex; justify-content: space-between; margin: 0;">';
-    printContent += '<span><strong>Discount:</strong></span><span>₱' + parseFloat(discount).toFixed(2) + '</span>';
-    printContent += '</p>';
-    printContent += '<p style="display: flex; justify-content: space-between; margin: 0;">';
-    printContent += '<span><strong>Total:</strong></span><span>₱' + total + '</span>';
-    printContent += '</p>';
-    printContent += '<p style="display: flex; justify-content: space-between; margin: 0;">';
-    printContent += '<span><strong>Payment Method:</strong></span><span>' + paymentMethod + '</span>';
-    printContent += '</p>';
-    printContent += '<p style="display: flex; justify-content: space-between; margin: 0;">';
-    printContent += '<span><strong>Status:</strong></span><span>' + status + '</span>';
-    printContent += '</p>';
-    printContent += '====================================';
+                 --------------------------------------------------
+    `;
 
-    // Show payment details based on payment method
+
     if (paymentMethod === 'Cash') {
-        printContent += '<p style="display: flex; justify-content: space-between; margin: 0;">';
-        printContent += '<span><strong>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Cash Tendered:</strong></span><span>₱' + cashTendered + '</span>';
-        printContent += '</p>';
-        printContent += '<p style="display: flex; justify-content: space-between; margin: 0;">';
-        printContent += '<span><strong>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Change:</strong></span><span>₱-' + change + '</span>';
-        printContent += '</p>';
+        printContent += `
+            <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                <span><strong>Cash Tendered:</strong></span><span>₱${parseFloat(cashTendered).toFixed(2)}</span>
+            </p>
+            <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                <span><strong>Change:</strong></span><span>₱-${parseFloat(change).toFixed(2)}</span>
+            </p>
+        `;
     } else if (paymentMethod === 'GCash') {
-        // Display GCash reference if the payment method is GCash
-        printContent += '<p style="display: flex; justify-content: space-between; margin: 0;">';
-        printContent += '<span><strong>GCash Reference:</strong></span><span>' + gcashReference + '</span>';
-        printContent += '</p>';
+        printContent += `
+            <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                <strong>GCash Ref:</strong><span>${gcashReference}</span>
+            </p>
+        `;
     } else if (paymentMethod === 'Credit') {
-        // Display Charge Type if the payment method is Credit
-        printContent += '<p style="display: flex; justify-content: space-between; margin: 0;">';
-        printContent += '<span><strong>Charge To:</strong></span><span>' + chargeType + '</span>';
-        printContent += '</p>';
+         printContent += `
+            <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                <strong>Charge to:</strong><span>${chargeType}</span>
+            </p>
+        `;
 
-        printContent += '<p style="display: flex; justify-content: space-between; margin: 0;">';
         if (chargeDetails) {
-            if (chargeDetails.full_name) { 
-                printContent += '<p style="display: flex; justify-content: space-between; margin: 0;"><strong>Full Name:</strong> ' + chargeDetails.full_name + '</p>';
-                printContent += '<p style="display: flex; justify-content: space-between; margin: 0;"><strong>ID Number:</strong> ' + chargeDetails.id_number + '</p>';
-                printContent += '<p style="display: flex; justify-content: space-between; margin: 0;"><strong>Contact Number:</strong> ' + chargeDetails.contact_number + '</p>';
-                printContent += '<p style="display: flex; justify-content: space-between; margin: 0;"><strong>Department:&emsp;&emsp;&emsp;&emsp;</strong> ' + chargeDetails.department + '</p>';
+            if (chargeDetails.full_name) {
+                printContent += `
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                        <strong>Full Name:</strong><span>${chargeDetails.full_name}</span>
+                    </p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                        <strong>ID Number:</strong><span>${chargeDetails.id_number}</span>
+                    </p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                        <strong>Contact No:</strong><span>${chargeDetails.contact_number}</span>
+                    </p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                        <strong>Department:</strong><span>${chargeDetails.department}</span>
+                    </p>
+                `;
             } else if (chargeDetails.faculty_name) {
-                printContent += '<p style="display: flex; justify-content: space-between; margin: 0;"><strong>Faculty Name:</strong> ' + chargeDetails.faculty_name + '</p>';
-                printContent += '<p style="display: flex; justify-content: space-between; margin: 0;"><strong>ID Number:</strong> ' + chargeDetails.facultyIdNumber + '</p>';
-                printContent += '<p style="display: flex; justify-content: space-between; margin: 0;"><strong>Contact Number:</strong> ' + chargeDetails.facultyContactNumber + '</p>';
+                 printContent += `
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                        <strong>Employee Name:</strong><span>${chargeDetails.faculty_name}</span>
+                    </p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                        <strong>ID Number:</strong><span>${chargeDetails.facultyIdNumber}</span>
+                    </p>
+                    <p style="display: flex; justify-content: space-between; margin: 2px 0;">
+                        <strong>Contact No:</strong><span>${chargeDetails.facultyContactNumber}</span>
+                    </p>`;
             }
         }
-        
     }
 
-    printContent += '====================================';
-    printContent += '</div>';
-    printContent += '<br><br>';
+    printContent += `
+             --------------------------------------------------
+            <p style="text-align: center; font-size: 10px; margin-bottom: 5px;">This is your Sales Invoice</p>
+            <p style="text-align: center; font-size: 10px;">${generateSalesInvoiceNumber()}</p>
+            <p style="text-align: center; font-size: 9px;">Thank you for shopping with us!</p>
+        </div>
+    `;
+
+
 
     function generateSalesInvoiceNumber() {
         const currentDate = new Date();
@@ -338,18 +376,12 @@ $('#printBtn').on('click', function () {
         const randomNum = String(Math.floor(Math.random() * 900000) + 100000);
         return `SI-${year}${month}-${randomNum}`;
     }
-    // Add official receipt message
-    printContent += '<p style="text-align: center; font-size: 12px; margin-bottom: 10px;">This is your Sales Invoice</p>';
-    printContent += '<p style="text-align: center; font-size: 12px;">' + generateSalesInvoiceNumber() + '</p>';
 
-    // Footer message
-    printContent += '<p style="text-align: center; font-size: 10px;">Thank you for shopping with us!</p>';
-    printContent += '</div>';
 
     // Get the screen width and height to center the window
     var screenWidth = window.innerWidth;
     var screenHeight = window.innerHeight;
-    var windowWidth = 400;  // Width of the print window
+    var windowWidth = 300;  // Width of the print window
     var windowHeight = 600; // Height of the print window
     var left = (screenWidth - windowWidth) / 2;  // Center horizontally
     var top = (screenHeight - windowHeight) / 2;  // Center vertically
@@ -358,14 +390,15 @@ $('#printBtn').on('click', function () {
     var printWindow = window.open('', '', `height=${windowHeight},width=${windowWidth},top=${top},left=${left}`);
 
     // Set the styles for the print window
-    printWindow.document.write('<html><head><title>Sales Invoice</title><style>');
+   printWindow.document.write('<html><head><title>Sales Invoice</title><style>');
     printWindow.document.write('@media print {');
-    printWindow.document.write('body { margin: 0; padding: 0; text-align: center; font-family: Arial, sans-serif; }');
-    printWindow.document.write('div { width: 300px; margin: 0 auto; padding: 10px; font-size: 12px; border: 1px solid #ccc; text-align: left; }');
-    printWindow.document.write('table { width: 100%; text-align: left; font-size: 12px; margin-bottom: 10px; }');
-    printWindow.document.write('th, td { padding: 5px; }');
-    printWindow.document.write('h3 { font-size: 14px; margin-bottom: 10px; }');
-    printWindow.document.write('p { font-size: 12px; }');
+    printWindow.document.write('body { margin: 0; padding: 0; text-align: center; font-family: monospace; }');
+    printWindow.document.write('div { width: 280px; margin: 0 auto; padding: 5px; font-size: 10px; text-align: left; line-height: 1.2; }');
+    printWindow.document.write('table { width: 100%; text-align: left; font-size: 10px; margin-bottom: 5px; border-collapse: collapse; }');
+    printWindow.document.write('th, td { padding: 2px 0; }');
+    printWindow.document.write('h3 { font-size: 12px; margin-bottom: 5px; }');
+    printWindow.document.write('p { font-size: 10px; margin: 2px 0;}');
+    printWindow.document.write('strong { font-weight: bold; }');
     printWindow.document.write('}');
     printWindow.document.write('</style></head><body>');
     printWindow.document.write(printContent);

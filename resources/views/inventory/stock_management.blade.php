@@ -140,6 +140,59 @@
             <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
+<!-- Stock Status Notifications Modal -->
+
+<div class="modal fade" id="stockAlertModal" tabindex="-1" aria-labelledby="stockAlertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title text-white" id="stockAlertModalLabel"><i class="fas fa-bell me-1"></i> Stock Status Alerts</h5>
+            </div>
+            <div class="modal-body p-3">
+
+                <!-- Filter and Search Controls -->
+
+                <div class="row mb-3" style="display:none;">
+                    <div class="col-md-3"> <!-- Adjusted col-md-* values to accommodate the new button -->
+                        <label for="filterType" class="form-label">Filter by Status:</label>
+                        <select class="form-select" id="filterType">
+                            <option value="all">All Items</option>
+                            <option value="low">Low Stock</option>
+                            <option value="out">Out of Stock</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3"> <!-- Adjusted col-md-* values to accommodate the new button -->
+                        <label for="filterCategory" class="form-label">Filter by Category:</label>
+                        <select class="form-select" id="filterCategory">
+                            <option value="all">All Categories</option>
+                            <!-- Categories will be dynamically populated here -->
+                        </select>
+                    </div>
+                    <div class="col-md-3"> <!-- Adjusted col-md-* values to accommodate the new button -->
+                        <label for="searchInput" class="form-label">Search:</label>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Search by item name...">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end"> <!-- Added col-md-* and alignment classes -->
+                        <button id="clearFiltersButton" class="btn btn-outline-secondary">
+                            <i class="fas fa-undo"></i> Reset Filters
+                        </button>
+                    </div>
+                </div>
+
+                <div id="stockAlertContainer" class="overflow-auto" style="max-height: 400px;">
+                    <div id="stockAlertModalBody" class="list-group">
+                        <!-- Alerts will be dynamically inserted here -->
+                    </div>
+                </div>
+                <p class="mt-3 text-muted"><small>This list shows items that are out of stock or below their low stock limit.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
 
     <!-- Main Stock Management Section -->
     <div id="stock-management-section">
@@ -267,9 +320,9 @@
                                 <td>{{ $item->supplier_info ?? 'N/A' }}</td>
                                 <td>
                                     @if ($item->qtyInStock == 0)
-                                        <span class="badge bg-secondary">Out of Stock</span>
+                                        <span class="badge bg-danger">Out of Stock</span>
                                     @elseif ($item->qtyInStock <= $item->low_stock_limit)
-                                        <span class="badge bg-danger">Low Stock</span>
+                                        <span class="badge bg-warning text-black">Low Stock</span>
                                     @else
                                         <span class="badge bg-success">In Stock</span>
                                     @endif
@@ -727,16 +780,8 @@
             </div>
         </div>
     </div>
-
-
-
-
-
     <!-- jQuery (required by DataTables) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-
-
     <style>
         .spin {
             animation: spin 0.6s linear;
@@ -1428,8 +1473,130 @@
         }
     });
 });
+document.addEventListener('DOMContentLoaded', function () {
+const items = @json($items); // Pass PHP $items array to JavaScript
+const stockAlertModalBody = document.getElementById('stockAlertModalBody');
+const filterTypeSelect = document.getElementById('filterType');
+const filterCategorySelect = document.getElementById('filterCategory');
+const searchInput = document.getElementById('searchInput');
+const clearFiltersButton = document.getElementById('clearFiltersButton'); // Get the clear filters button
 
 
+// --- Populate Category Filter ---
+function populateCategoryFilter() {
+    const categories = new Set();
+    categories.add("All Categories");
+    items.forEach(item => {
+        if (item.category && item.category.category_name) {
+            categories.add(item.category.category_name);
+        }
+    });
+
+    filterCategorySelect.innerHTML = Array.from(categories)
+        .map(category => {
+            // Conditionally set the value to "all" for "All Categories"
+            const value = category === "All Categories" ? "all" : category;
+            return `<option value="${value}">${category}</option>`;
+        })
+        .join('');
+}
+
+populateCategoryFilter();
+
+function renderAlerts(filteredItems) {
+const notifications = [];
+filteredItems.forEach(item => {
+// Added unit_of_measurement here
+const unitOfMeasurement = item.unit_of_measurement ? `(${item.unit_of_measurement})` : '';
+
+if (item.qtyInStock == 0) {
+        notifications.push(`
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-bold"><i class="fas fa-times-circle text-danger"></i></span> ${item.item_name} ${unitOfMeasurement}
+                    <br>
+                    <small class="text-muted">Category: ${item.category ? item.category.category_name : 'N/A'}</small>
+                </div>
+                <span class="badge bg-danger rounded-pill">Out of Stock</span>
+            </div>
+        `);
+    } else if (item.qtyInStock <= item.low_stock_limit) {
+        notifications.push(`
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-bold"><i class="fas fa-exclamation-circle text-warning"></i> Low Stock:</span> ${item.item_name} ${unitOfMeasurement}
+                    <br>
+                    <small class="text-muted">Category: ${item.category ? item.category.category_name : 'N/A'}</small>
+                </div>
+                <span class="badge bg-warning text-dark rounded-pill">${item.qtyInStock} Left</span>
+            </div>
+        `);
+    }
+});
+
+if (notifications.length > 0) {
+    stockAlertModalBody.innerHTML = notifications.join('');
+} else {
+    stockAlertModalBody.innerHTML = `
+        <div class="alert alert-info text-center" role="alert">
+            No items match the current filter and search criteria.
+        </div>
+    `;
+}
+
+
+}
+
+function filterAndSearch() {
+const filterValue = filterTypeSelect.value;
+const categoryValue = filterCategorySelect.value;
+const searchValue = searchInput.value.toLowerCase();
+
+const filteredItems = items.filter(item => {
+    let statusMatch = true;
+    if (filterValue === 'low') {
+        statusMatch = item.qtyInStock <= item.low_stock_limit && item.qtyInStock > 0;
+    } else if (filterValue === 'out') {
+        statusMatch = item.qtyInStock == 0;
+    }
+
+    let categoryMatch = true;
+    if (categoryValue !== 'all' && categoryValue !== "All Categories") {
+        categoryMatch = item.category && item.category.category_name === categoryValue;
+    }
+
+    const nameMatch = item.item_name.toLowerCase().includes(searchValue);
+    const categorySearchMatch = item.category && item.category.category_name.toLowerCase().includes(searchValue);
+
+    return statusMatch && categoryMatch && (nameMatch || categorySearchMatch);
+});
+
+renderAlerts(filteredItems);
+
+
+}
+
+function clearFilters() {
+    filterTypeSelect.value = 'all';
+    filterCategorySelect.value = 'all';
+    searchInput.value = '';
+    filterAndSearch(); // Re-render alerts with default filters
+}
+
+filterTypeSelect.addEventListener('change', filterAndSearch);
+filterCategorySelect.addEventListener('change', filterAndSearch);
+searchInput.addEventListener('input', filterAndSearch);
+clearFiltersButton.addEventListener('click', clearFilters); // Add event listener for the clear filters button
+
+const initialFilteredItems = items.filter(item => item.qtyInStock <= item.low_stock_limit);
+if (initialFilteredItems.length > 0) {
+renderAlerts(initialFilteredItems);
+const stockAlertModal = new bootstrap.Modal(document.getElementById('stockAlertModal'));
+stockAlertModal.show();
+}
+
+
+});
     </script>
 
 @endsection

@@ -24,7 +24,7 @@
                     <th>Transaction Number</th>
                     <th>Payment Method</th>
                     <th>Charge To</th>
-                    <th>Department/Faculty Name</th>
+                    <th>Department/Employee Name</th>
                     <th>Status</th>
                     <th>Action</th>
                 </tr>
@@ -39,7 +39,7 @@
                     <td>
                         @if ($transaction->charge_type === 'Department')
                             {{ $transaction->department }}
-                        @elseif ($transaction->charge_type === 'Faculty')
+                        @elseif ($transaction->charge_type === 'Employee')
                             {{ $transaction->faculty_name }}
                         @else
                             N/A
@@ -170,10 +170,10 @@
                         <strong>ID Number:</strong> ${data.id_number}<br>
                         <strong>Contact Number:</strong> ${data.contact_number}<br>
                     `;
-                } else if (data.chargeType === 'Faculty') {
+                } else if (data.chargeType === 'Employee') {
                     chargeToHTML = `
-                        <h4>CHARGE TO: FACULTY</h4>
-                        <strong>Faculty Name:</strong> ${data.faculty_name}<br>
+                        <h4>CHARGE TO: EMPLOYEE</h4>
+                        <strong>Employee Name:</strong> ${data.faculty_name}<br>
                         <strong>ID Number:</strong> ${data.id_number}<br>
                         <strong>Contact Number:</strong> ${data.contact_number}<br>
                     `;

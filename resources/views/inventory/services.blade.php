@@ -25,7 +25,7 @@
 @endif
 
 <div class="d-flex justify-content-end">
-    <button type="button" class="btn btn-outline-success mb-3" data-bs-toggle="modal" data-bs-target="#addServiceModal" style="display: none">
+    <button type="button" class="btn btn-outline-success mb-3" data-bs-toggle="modal" data-bs-target="#addServiceModal">
         <i class="fas fa-plus me-1"></i> Add New Service
     </button>
 </div>

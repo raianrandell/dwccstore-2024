@@ -220,8 +220,8 @@
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="chargeType"
-                                            id="facultyCharge" value="Faculty">
-                                        <label class="form-check-label" for="facultyCharge">Charge to Faculty</label>
+                                            id="facultyCharge" value="Employee">
+                                        <label class="form-check-label" for="facultyCharge">Charge to Employee</label>
                                     </div>
 
                                     <div id="departmentFields" style="display: none;">
@@ -272,9 +272,9 @@
                                                 placeholder="Enter Contact Number" maxlength="11" pattern="\d{11}">
                                         </div>
                                         <div class="mb-3">
-                                            <label for="facultyName" class="form-label">Faculty Name</label>
+                                            <label for="facultyName" class="form-label">Employee Name</label>
                                             <input type="text" class="form-control" id="facultyName"
-                                                placeholder="Enter Faculty Name">
+                                                placeholder="Enter Employee Name">
                                         </div>
                                     </div>
                                 </div>
@@ -725,7 +725,7 @@
                         $('#idNumber').val().trim() !== '' &&
                         $('#contactNumber').val().trim() !== '' &&
                         $('#department').val().trim() !== '';
-                } else if (chargeType === 'Faculty') {
+                } else if (chargeType === 'Employee') {
                     isValid = $('#idNumber').val().trim() !== '' &&
                         $('#contactNumber').val().trim() !== '' &&
                         $('#facultyName').val().trim() !== '';
@@ -742,7 +742,7 @@
                 if (chargeType === 'Department') {
                     $('#departmentFields').show();
                     $('#facultyFields').hide();
-                } else if (chargeType === 'Faculty') {
+                } else if (chargeType === 'Employee') {
                     $('#facultyFields').show();
                     $('#departmentFields').hide();
                 } else {
@@ -782,7 +782,7 @@
                     if (chargeType === 'Department') {
                         $('#departmentFields').show();
                         $('#facultyFields').hide();
-                    } else if (chargeType === 'Faculty') {
+                    } else if (chargeType === 'Employee') {
                         $('#facultyFields').show();
                         $('#departmentFields').hide();
                     } else {
@@ -802,7 +802,7 @@
                             'input[name="chargeType"]:checked').value;
 
                         // Now you can safely use chargeType
-                        if (chargeType === 'Faculty') {
+                        if (chargeType === 'Employee') {
                             document.getElementById('facultyFields').style.display =
                                 'block';
                             document.getElementById('departmentFields').style.display =
@@ -852,7 +852,7 @@
                                 isValid = false;
                                 errorMessage = 'Please fill out all fields for department charge.';
                             }
-                        } else if (chargeType === 'Faculty') {
+                        } else if (chargeType === 'Employee') {
                             const facultyName = $('#facultyName').val();
                             const facultyIdNumber = $('#facultyIdNumber').val();
                             const facultyContactNumber = $('#facultyContactNumber').val();
@@ -1079,10 +1079,10 @@
                     <strong>Department:</strong><span>${department}</span>
                 </p>
             `;
-                    } else if (chargeType === 'Faculty') {
+                    } else if (chargeType === 'Employee') {
                         printContent += `
                 <p style="display: flex; justify-content: space-between; margin: 2px 0;">
-                    <strong>Faculty Name:</strong><span>${facultyName}</span>
+                    <strong>Employee Name:</strong><span>${facultyName}</span>
                 </p>
                 <p style="display: flex; justify-content: space-between; margin: 2px 0;">
                     <strong>ID Number:</strong><span>${facultyIdNumber}</span>

@@ -210,15 +210,15 @@ class CashierController extends Controller
             'subtotal' => 'required|numeric|min:0',
             'discount' => 'required|numeric|min:0',
             'total' => 'required|numeric|min:0',
-            'chargeType' => 'required_if:paymentMethod,Credit|in:Department,Faculty',
+            'chargeType' => 'required_if:paymentMethod,Credit|in:Department,Employee',
             // Add validation rules for credit-specific fields
             'fullName' => 'required_if:chargeType,Department|nullable|string|max:255',
             'idNumber' => 'required_if:chargeType,Department|nullable|string|max:255',
             'contactNumber' => 'required_if:chargeType,Department|nullable|string|max:255',
             'department' => 'required_if:chargeType,Department|nullable|string|max:255',
-            'facultyName' => 'required_if:chargeType,Faculty|nullable|string|max:255',
-            'facultyIdNumber' => 'required_if:chargeType,Faculty|nullable|string|max:255',
-            'facultyContactNumber' => 'required_if:chargeType,Faculty|nullable|string|max:255',
+            'facultyName' => 'required_if:chargeType,Employee|nullable|string|max:255',
+            'facultyIdNumber' => 'required_if:chargeType,Employee|nullable|string|max:255',
+            'facultyContactNumber' => 'required_if:chargeType,Employee|nullable|string|max:255',
         ]);
         // Additional validation: Ensure cashTendered is sufficient if paymentMethod is cash
         if ($request->paymentMethod === 'Cash' && $request->cashTendered < $request->total) {
@@ -276,8 +276,8 @@ class CashierController extends Controller
                 'gcash_reference' => $request->paymentMethod === 'GCash' ? $request->gcashReference : null,
                 'charge_type' => $request->chargeType,
                 'full_name' => $request->fullName,
-                'id_number' => $request->chargeType === 'Department' ? $request->idNumber : ($request->chargeType === 'Faculty' ? $request->facultyIdNumber : null),
-                'contact_number' => $request->chargeType === 'Department' ? $request->contactNumber : ($request->chargeType === 'Faculty' ? $request->facultyContactNumber : null),
+                'id_number' => $request->chargeType === 'Department' ? $request->idNumber : ($request->chargeType === 'Employee' ? $request->facultyIdNumber : null),
+                'contact_number' => $request->chargeType === 'Department' ? $request->contactNumber : ($request->chargeType === 'Employee' ? $request->facultyContactNumber : null),
                 'department' => $request->department,
                 'faculty_name' => $request->facultyName,     
                 'status' => $status, 
@@ -831,7 +831,7 @@ class CashierController extends Controller
                 'contact_number' => $transaction->contact_number,
                 'department' => $transaction->department,
             ];
-        } elseif ($chargeType === 'Faculty') {
+        } elseif ($chargeType === 'Employee') {
             $chargeDetails = [
                 'faculty_name' => $transaction->faculty_name, // Note: Ensure this is retrieved and assigned from the database
                 'facultyIdNumber' => $transaction->id_number, // Use proper property name, ensure it exists
@@ -930,6 +930,71 @@ class CashierController extends Controller
     
         return redirect()->back()->with('success', 'Selected items returned successfully.');
     } 
+
+    public function getCreditTransactionDetails($id)
+    {
+        try {
+            // Find the transaction and eager load related data
+            $transaction = Transaction::with([
+                'items',             // Relation for regular POS items
+                'serviceItems.service' // Relation for service items (and nested service details)
+                                       // Add 'department' or 'faculty' relations if needed for charge_to details
+                                       // and they are not already directly on the transaction model
+                // 'department',
+                // 'faculty'
+             ])->findOrFail($id);
+
+
+            // Prepare data for JSON response
+            $responseData = [
+                'success' => true,
+                'transaction_no' => $transaction->transaction_no,
+                'created_at' => $transaction->created_at->format('m-d-Y h:i:s a'),
+                'charge_type' => $transaction->charge_type,
+                'status' => $transaction->status,
+
+                // Department Info (if applicable)
+                'department' => $transaction->charge_type == 'Department' ? $transaction->department : null,
+                'full_name' => $transaction->charge_type == 'Department' ? $transaction->full_name : null,
+                'id_number' => $transaction->id_number, // Assuming ID number is common
+                'contact_number' => $transaction->contact_number, // Assuming contact number is common
+
+                // Faculty Info (if applicable)
+                'faculty_name' => $transaction->charge_type == 'Faculty' ? $transaction->faculty_name : null,
+
+                // Items
+                'items' => $transaction->items->map(function ($item) {
+                    return [
+                        'item_name' => $item->item_name, // Adjust field names if needed
+                        'quantity' => $item->quantity,
+                        'price' => $item->price,
+                        'total' => $item->total,
+                    ];
+                }),
+
+                // Service Items
+                'serviceItems' => $transaction->serviceItems->map(function ($serviceItem) {
+                     return [
+                        'service_name' => $serviceItem->service->service_name ?? 'N/A', // Access nested relation
+                        'service_type' => $serviceItem->service_type,
+                        'number_of_copies' => $serviceItem->number_of_copies,
+                        'number_of_hours' => $serviceItem->number_of_hours,
+                        'price' => $serviceItem->price,
+                        'total' => $serviceItem->total,
+                    ];
+                }),
+
+                // Calculate total amount
+                'totalAmount' => $transaction->items->sum('total') + $transaction->serviceItems->sum('total'),
+            ];
+
+            return response()->json($responseData);
+
+        } catch (\Exception $e) {
+            Log::error("Error fetching credit transaction details for ID {$id}: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Could not retrieve transaction details.'], 500);
+        }
+    }
     
     public function returnReport(Request $request)
     {
@@ -1275,15 +1340,15 @@ class CashierController extends Controller
         'subtotal' => 'required|numeric|min:0',
         'discount' => 'required|numeric|min:0',
         'total' => 'required|numeric|min:0',
-        'chargeType' => 'required_if:paymentMethod,Credit|in:Department,Faculty',
+        'chargeType' => 'required_if:paymentMethod,Credit|in:Department,Employee',
         // Add validation rules for credit-specific fields
         'fullName' => 'required_if:chargeType,Department|nullable|string|max:255',
         'idNumber' => 'required_if:chargeType,Department|nullable|string|max:255',
         'contactNumber' => 'required_if:chargeType,Department|nullable|string|max:255',
         'department' => 'required_if:chargeType,Department|nullable|string|max:255',
-        'facultyName' => 'required_if:chargeType,Faculty|nullable|string|max:255',
-        'facultyIdNumber' => 'required_if:chargeType,Faculty|nullable|string|max:255',
-        'facultyContactNumber' => 'required_if:chargeType,Faculty|nullable|string|max:255',
+        'facultyName' => 'required_if:chargeType,Employee|nullable|string|max:255',
+        'facultyIdNumber' => 'required_if:chargeType,Employee|nullable|string|max:255',
+        'facultyContactNumber' => 'required_if:chargeType,Employee|nullable|string|max:255',
     ]);
 
     // Ensure cashTendered is sufficient if paymentMethod is cash
@@ -1315,8 +1380,8 @@ class CashierController extends Controller
             'gcash_reference' => $request->paymentMethod === 'GCash' ? $request->gcashReference : null,
             'charge_type' => $request->chargeType,
             'full_name' => $request->fullName,
-            'id_number' => $request->chargeType === 'Department' ? $request->idNumber : ($request->chargeType === 'Faculty' ? $request->facultyIdNumber : null),
-            'contact_number' => $request->chargeType === 'Department' ? $request->contactNumber : ($request->chargeType === 'Faculty' ? $request->facultyContactNumber : null),
+            'id_number' => $request->chargeType === 'Department' ? $request->idNumber : ($request->chargeType === 'Employee' ? $request->facultyIdNumber : null),
+            'contact_number' => $request->chargeType === 'Department' ? $request->contactNumber : ($request->chargeType === 'Employee' ? $request->facultyContactNumber : null),
             'department' => $request->department,
             'faculty_name' => $request->facultyName,
             'status' => $status,
@@ -1404,8 +1469,8 @@ public function getServiceTransactionItems(Request $request)
         'charge_type' => $transaction->charge_type,
         'charge_details' => [
             'full_name' => $transaction->full_name,
-            'id_number' => $transaction->charge_type === 'Department' ? $transaction->id_number : ($transaction->charge_type === 'Faculty' ? $transaction->id_number : null),
-            'contact_number' => $transaction->charge_type === 'Department' ? $transaction->contact_number : ($transaction->charge_type === 'Faculty' ? $transaction->contact_number : null),
+            'id_number' => $transaction->charge_type === 'Department' ? $transaction->id_number : ($transaction->charge_type === 'Employee' ? $transaction->id_number : null),
+            'contact_number' => $transaction->charge_type === 'Department' ? $transaction->contact_number : ($transaction->charge_type === 'Employee' ? $transaction->contact_number : null),
             'department' => $transaction->department,
             'faculty_name' => $transaction->faculty_name,
         ],

@@ -213,7 +213,7 @@
                                         <div class="mb-3">
                                             <label for="facultyName" class="form-label">Employee Name</label>
                                             <input type="text" class="form-control" id="facultyName"
-                                                placeholder="Enter Faculty Name">
+                                                placeholder="Enter Employee Name">
                                         </div>
                                     </div>
                                 </div>

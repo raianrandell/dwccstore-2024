@@ -48,9 +48,9 @@
                         </td>
                         <td>
                             @if ($transaction->status == 'Not Paid')
-                                <span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>{{ $transaction->status }}</span>
+                                <span class="badge bg-danger">{{ $transaction->status }}</span>
                             @else
-                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>{{ $transaction->status }}</span>
+                                <span class="badge bg-success">{{ $transaction->status }}</span>
                             @endif
                         </td>
                         <td class="text-center">
@@ -259,7 +259,7 @@
                 if (data.serviceItems && data.serviceItems.length > 0) {
                     serviceItemsHTML = `
                         <div class="card mb-4 shadow-sm">
-                            <div class="card-header bg-success text-secondary">
+                            <div class="card-header bg-success text-white">
                                 <i class="fas fa-concierge-bell me-1"></i>
                                 Service Items Credit List
                             </div>

@@ -959,8 +959,8 @@ class CashierController extends Controller
                 'id_number' => $transaction->id_number, // Assuming ID number is common
                 'contact_number' => $transaction->contact_number, // Assuming contact number is common
 
-                // Faculty Info (if applicable)
-                'faculty_name' => $transaction->charge_type == 'Faculty' ? $transaction->faculty_name : null,
+                // Employee Info (if applicable)
+                'employee_name' => $transaction->charge_type == 'Employee' ? $transaction->faculty_name : null,
 
                 // Items
                 'items' => $transaction->items->map(function ($item) {

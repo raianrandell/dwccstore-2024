@@ -147,7 +147,7 @@
                     } else if (data.charge_type === 'Employee') { // Adjusted from Employee
                         chargeToHTML = `
                             <h6 class="mb-2"><strong><i class="fas fa-user-tie me-2"></i>Charge To: Employee</strong></h6>
-                            <p class="mb-1 ms-4"><strong>Employee Name:</strong> ${data.Employee_name || 'N/A'}</p>
+                            <p class="mb-1 ms-4"><strong>Employee Name:</strong> ${data.employee_name || 'N/A'}</p>
                             <p class="mb-1 ms-4"><strong>ID Number:</strong> ${data.id_number || 'N/A'}</p>
                             <p class="mb-1 ms-4"><strong>Contact:</strong> ${data.contact_number || 'N/A'}</p>
                         `;

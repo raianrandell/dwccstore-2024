@@ -147,85 +147,153 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>DWCC</title>
     <link rel="icon" href="{{ asset('images/dwcclogo.ico') }}" type="image/x-icon">
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 
     <!-- Styles -->
     <style>
-        /* General Styles */
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: #f4f7f6;
+        :root {
+            --primary-color: #198754;
+            --primary-hover: #126c47;
+            --text-color: #333;
+            --light-bg: #f2f7f6;
+            --gradient-bg: linear-gradient(135deg, #dff3ec, #f8f9fa);
+        }
+
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Poppins', sans-serif;
+            background: var(--gradient-bg);
             display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             flex-direction: column;
         }
 
-        /* Navbar Styles */
         .navbar {
-            width: 100%;
             height: 56px;
-            background: #198754;
+            background-color: var(--primary-color);
+            color: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 20px;
+            font-weight: 600;
             position: fixed;
             top: 0;
             left: 0;
-            z-index: 1000;
+            right: 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            z-index: 100;
         }
 
-        .navbar h1 {
-            color: white;
-            font-size: 20px;
-            margin: 0;
+        .main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            margin-top: 56px;
         }
 
-        .container {
+        .card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            max-width: 500px;
+            width: 100%;
             text-align: center;
-            padding-top: 80px; /* prevent overlap with navbar */
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .card h1 {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .card p {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 2rem;
         }
 
         .button-container {
-            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
         .button {
             display: inline-block;
+            background-color: var(--primary-color);
+            color: #fff;
             padding: 12px 24px;
-            margin: 10px;
             font-size: 16px;
+            font-weight: 500;
             text-decoration: none;
-            color: white;
-            background-color: #198754;
             border-radius: 8px;
-            transition: background-color 0.3s ease;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
         }
 
-        .button:hover {
-            background-color: #333;
+        .button:hover,
+        .button:focus-visible {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        @media (min-width: 576px) {
+            .button-container {
+                flex-direction: row;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .button {
+                margin: 0 8px;
+                min-width: 150px;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
 <body>
     <!-- Navbar -->
     <div class="navbar">
-        <h1>DWCC Sales and Inventory System</h1>
+        DWCC Sales and Inventory System
     </div>
 
-    <!-- Main Container -->
-    <div class="container">
-        <h1>Welcome!</h1>
-        <p>Choose a module to log in to:</p>
+    <!-- Main Content -->
+    <main class="main">
+        <div class="card">
+            <h1>Welcome!</h1>
+            <p>Please select a module to continue:</p>
 
-        <div class="button-container">
-            <a href="{{ route('cashier_login') }}" class="button">Cashier Login</a>
-            <a href="{{ route('inventory.login') }}" class="button">Inventory Login</a>
-            <a href="{{ route('accounting_login') }}" class="button">Accounting Login</a>
+            <div class="button-container">
+                <a href="{{ route('cashier_login') }}" class="button">Cashier Login</a>
+                <a href="{{ route('inventory.login') }}" class="button">Inventory Login</a>
+                <a href="{{ route('accounting_login') }}" class="button">Accounting Login</a>
+            </div>
         </div>
-    </div>
+    </main>
 </body>
 </html>

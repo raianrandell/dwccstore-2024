@@ -379,7 +379,7 @@
                         row.find('.quantity').val(existingItem.quantity);
                         row.find('.total').text(existingItem.total.toFixed(2));
 
-                        showAlert('Quantity updated successfully.', 'success');
+                        // showAlert('Quantity updated successfully.', 'success');
                     } else {
                         // Create a new row for the item
                         const row = `

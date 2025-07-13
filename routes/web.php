@@ -9,7 +9,7 @@ use App\Http\Controllers\AccountingController;
 
 // Public Routes
 Route::GET('/', function () {
-    return redirect()->route('admin_login');
+    return view('welcome');
 });
 
 // SuperAdmin Routes
